@@ -1,0 +1,93 @@
+@page "/"
+@using MudBlazor
+
+<PageTitle>TwinsWins - Home</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudGrid>
+        <MudItem xs="12" Class="text-center my-8">
+            <MudText Typo="Typo.h2" GutterBottom="true">Welcome to TwinsWins!</MudText>
+            <MudText Typo="Typo.h5" Color="Color.Secondary">
+                Find matching pairs, compete for prizes
+            </MudText>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="3" Class="pa-6">
+                <MudText Typo="Typo.h5" GutterBottom="true">
+                    <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Class="mr-2" />
+                    Free Practice
+                </MudText>
+                <MudText Class="mb-4">
+                    Sharpen your skills with unlimited free games. No stakes, just fun!
+                </MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/play?mode=free" FullWidth="true">
+                    Play Free Game
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="3" Class="pa-6">
+                <MudText Typo="Typo.h5" GutterBottom="true">
+                    <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Class="mr-2" />
+                    Competitive Play
+                </MudText>
+                <MudText Class="mb-4">
+                    Stake TON and compete for real prizes. Winner takes all!
+                </MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Success" Href="/play?mode=paid" FullWidth="true">
+                    Play for Stakes
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" Class="mt-8">
+            <MudText Typo="Typo.h4" GutterBottom="true">How to Play</MudText>
+            <MudTimeline TimelinePosition="TimelinePosition.Start">
+                <MudTimelineItem Color="Color.Info" Size="Size.Large">
+                    <MudText Typo="Typo.h6">1. Connect Your Wallet</MudText>
+                    <MudText>Connect your TON wallet to get started</MudText>
+                </MudTimelineItem>
+                <MudTimelineItem Color="Color.Info" Size="Size.Large">
+                    <MudText Typo="Typo.h6">2. Find the Pairs</MudText>
+                    <MudText>18 cards are displayed face-up. Find 9 logically connected pairs!</MudText>
+                </MudTimelineItem>
+                <MudTimelineItem Color="Color.Info" Size="Size.Large">
+                    <MudText Typo="Typo.h6">3. Race Against Time</MudText>
+                    <MudText>You have 60 seconds. Faster matches earn more points!</MudText>
+                </MudTimelineItem>
+                <MudTimelineItem Color="Color.Success" Size="Size.Large">
+                    <MudText Typo="Typo.h6">4. Win Prizes</MudText>
+                    <MudText>Highest score wins the pot in competitive games!</MudText>
+                </MudTimelineItem>
+            </MudTimeline>
+        </MudItem>
+
+        <MudItem xs="12" Class="mt-8">
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudPaper Elevation="2" Class="pa-4 text-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6" Class="mt-2">60 Second Games</MudText>
+                        <MudText>Quick, exciting gameplay</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudPaper Elevation="2" Class="pa-4 text-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Large" Color="Color.Success" />
+                        <MudText Typo="Typo.h6" Class="mt-2">Blockchain Secured</MudText>
+                        <MudText>Fair play guaranteed with TON</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudPaper Elevation="2" Class="pa-4 text-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Leaderboard" Size="Size.Large" Color="Color.Warning" />
+                        <MudText Typo="Typo.h6" Class="mt-2">Compete & Win</MudText>
+                        <MudText>Climb the leaderboards</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudItem>
+    </MudGrid>
+</MudContainer>

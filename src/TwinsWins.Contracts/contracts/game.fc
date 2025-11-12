@@ -1,0 +1,165 @@
+;; TwinsWins Game Contract
+;; Handles escrow, validation, and payout for individual games
+
+#include "stdlib.fc";
+
+;; Storage layout
+;; creator_address: MsgAddress
+;; joiner_address: MsgAddress (null if not joined)
+;; stake_amount: int (nanotons)
+;; creator_score: int (-1 if not submitted)
+;; joiner_score: int (-1 if not submitted)
+;; status: int (0=created, 1=active, 2=settling, 3=settled, 4=cancelled)
+;; expiration_time: int (unix timestamp)
+;; factory_address: MsgAddress
+;; platform_fee: int (basis points, 1500 = 15%)
+;; affiliate_fee: int (basis points, 300 = 3%)
+
+(slice, slice, int, int, int, int, int, slice, int, int) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (
+        ds~load_msg_addr(),   ;; creator_address
+        ds~load_msg_addr(),   ;; joiner_address
+        ds~load_coins(),      ;; stake_amount
+        ds~load_int(32),      ;; creator_score
+        ds~load_int(32),      ;; joiner_score
+        ds~load_int(8),       ;; status
+        ds~load_uint(32),     ;; expiration_time
+        ds~load_msg_addr(),   ;; factory_address
+        ds~load_uint(16),     ;; platform_fee
+        ds~load_uint(16)      ;; affiliate_fee
+    );
+}
+
+() save_data(slice creator, slice joiner, int stake, int creator_score, 
+             int joiner_score, int status, int expiration, slice factory,
+             int platform_fee, int affiliate_fee) impure inline {
+    set_data(
+        begin_cell()
+            .store_slice(creator)
+            .store_slice(joiner)
+            .store_coins(stake)
+            .store_int(creator_score, 32)
+            .store_int(joiner_score, 32)
+            .store_int(status, 8)
+            .store_uint(expiration, 32)
+            .store_slice(factory)
+            .store_uint(platform_fee, 16)
+            .store_uint(affiliate_fee, 16)
+            .end_cell()
+    );
+}
+
+() join_game(slice joiner) impure {
+    var (creator, old_joiner, stake, creator_score, joiner_score, status, 
+         expiration, factory, platform_fee, affiliate_fee) = load_data();
+    
+    throw_unless(100, status == 0);  ;; Must be in created state
+    throw_if(101, now() > expiration);  ;; Not expired
+    throw_if(102, equal_slices(old_joiner, joiner) == 0);  ;; Joiner not set
+    
+    ;; Update state to active
+    save_data(creator, joiner, stake, creator_score, joiner_score, 1, 
+              expiration, factory, platform_fee, affiliate_fee);
+}
+
+() submit_result(slice player, int score) impure {
+    var (creator, joiner, stake, creator_score, joiner_score, status, 
+         expiration, factory, platform_fee, affiliate_fee) = load_data();
+    
+    throw_unless(110, status == 1);  ;; Must be active
+    
+    if (equal_slices(player, creator)) {
+        creator_score = score;
+    } elseif (equal_slices(player, joiner)) {
+        joiner_score = score;
+    } else {
+        throw(111);  ;; Unknown player
+    }
+    
+    ;; If both scores submitted, move to settling
+    int new_status = status;
+    if ((creator_score >= 0) & (joiner_score >= 0)) {
+        new_status = 2;
+    }
+    
+    save_data(creator, joiner, stake, creator_score, joiner_score, new_status, 
+              expiration, factory, platform_fee, affiliate_fee);
+}
+
+() settle_game() impure {
+    var (creator, joiner, stake, creator_score, joiner_score, status, 
+         expiration, factory, platform_fee, affiliate_fee) = load_data();
+    
+    throw_unless(120, status == 2);  ;; Must be settling
+    throw_unless(121, (creator_score >= 0) & (joiner_score >= 0));
+    
+    int total_pot = stake * 2;
+    slice winner = creator_score > joiner_score ? creator : joiner;
+    
+    ;; Calculate fees
+    int platform_amount = (total_pot * platform_fee) / 10000;
+    int affiliate_amount = (total_pot * affiliate_fee) / 10000;
+    int winner_amount = total_pot - platform_amount - affiliate_amount;
+    
+    ;; Send winner payout
+    send_raw_message(begin_cell()
+        .store_uint(0x18, 6)
+        .store_slice(winner)
+        .store_coins(winner_amount)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .end_cell(), 1);
+    
+    ;; Send platform fee
+    send_raw_message(begin_cell()
+        .store_uint(0x18, 6)
+        .store_slice(factory)
+        .store_coins(platform_amount + affiliate_amount)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .end_cell(), 1);
+    
+    ;; Update status to settled
+    save_data(creator, joiner, stake, creator_score, joiner_score, 3, 
+              expiration, factory, platform_fee, affiliate_fee);
+}
+
+() cancel_game() impure {
+    var (creator, joiner, stake, creator_score, joiner_score, status, 
+         expiration, factory, platform_fee, affiliate_fee) = load_data();
+    
+    throw_unless(130, status == 0);  ;; Must be created (not joined)
+    throw_unless(131, now() > expiration);  ;; Must be expired
+    
+    ;; Refund creator
+    send_raw_message(begin_cell()
+        .store_uint(0x18, 6)
+        .store_slice(creator)
+        .store_coins(stake)
+        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+        .end_cell(), 1);
+    
+    ;; Update status to cancelled
+    save_data(creator, joiner, stake, creator_score, joiner_score, 4, 
+              expiration, factory, platform_fee, affiliate_fee);
+}
+
+;; Get methods
+int get_status() method_id {
+    var (_, _, _, _, _, status, _, _, _, _) = load_data();
+    return status;
+}
+
+(slice, slice, int) get_players() method_id {
+    var (creator, joiner, stake, _, _, _, _, _, _, _) = load_data();
+    return (creator, joiner, stake);
+}
+
+(int, int) get_scores() method_id {
+    var (_, _, _, creator_score, joiner_score, _, _, _, _, _) = load_data();
+    return (creator_score, joiner_score);
+}
+
+;; TODO: Add recv_internal() to handle incoming messages
+;; TODO: Add recv_external() if needed
+;; TODO: Implement proper access control
+;; TODO: Add emergency pause mechanism

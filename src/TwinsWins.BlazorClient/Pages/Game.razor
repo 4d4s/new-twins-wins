@@ -1,0 +1,204 @@
+@page "/game/{GameId}"
+@using TwinsWins.Core.DTOs
+@using TwinsWins.BlazorClient.Services
+@using MudBlazor
+@inject IGameApiService GameApi
+@inject IGameHubService GameHub
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Game - TwinsWins</PageTitle>
+
+@if (_game == null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudGrid>
+                    <MudItem xs="4">
+                        <MudText Typo="Typo.h6">Time: @_timeRemaining</MudText>
+                    </MudItem>
+                    <MudItem xs="4" Class="text-center">
+                        <MudText Typo="Typo.h5">Score: @_score</MudText>
+                    </MudItem>
+                    <MudItem xs="4" Class="text-right">
+                        <MudText Typo="Typo.h6">Pairs: @_pairsFound/9</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudGrid Spacing="2">
+                @foreach (var card in _game.Cards)
+                {
+                    <MudItem xs="4" sm="3" md="2">
+                        <GameCard 
+                            Card="@card" 
+                            IsSelected="@_selectedCards.Contains(card.Id)"
+                            IsMatched="@_matchedCards.Contains(card.Id)"
+                            OnClick="@(() => SelectCard(card))" 
+                        />
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudItem>
+
+        @if (_gameComplete)
+        {
+            <MudItem xs="12">
+                <MudPaper Elevation="3" Class="pa-6 text-center">
+                    <MudText Typo="Typo.h4">Game Complete!</MudText>
+                    <MudText Typo="Typo.h5" Color="Color.Success">Final Score: @_score</MudText>
+                    @if (_isWinner.HasValue)
+                    {
+                        <MudText Typo="Typo.h6" Color="@(_isWinner.Value ? Color.Success : Color.Error)">
+                            @(_isWinner.Value ? "🎉 You Won!" : "Better luck next time!")
+                        </MudText>
+                    }
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PlayAgain" Class="mt-4">
+                        Play Again
+                    </MudButton>
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public string? GameId { get; set; }
+
+    private GameDto? _game;
+    private int _score = 0;
+    private int _pairsFound = 0;
+    private int _timeRemaining = 60;
+    private bool _gameComplete = false;
+    private bool? _isWinner;
+    private List<int> _selectedCards = new();
+    private HashSet<int> _matchedCards = new();
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(GameId))
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        try
+        {
+            _game = await GameApi.GetGameAsync(Guid.Parse(GameId));
+            await GameHub.JoinGameAsync(GameId);
+            StartTimer();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading game: {ex.Message}", Severity.Error);
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private void StartTimer()
+    {
+        _timer = new Timer(async _ =>
+        {
+            _timeRemaining--;
+            if (_timeRemaining <= 0)
+            {
+                await CompleteGame();
+            }
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task SelectCard(CardDto card)
+    {
+        if (_gameComplete || _matchedCards.Contains(card.Id) || _selectedCards.Contains(card.Id))
+            return;
+
+        _selectedCards.Add(card.Id);
+
+        if (_selectedCards.Count == 2)
+        {
+            await Task.Delay(100); // Brief pause for visual feedback
+            await CheckMatch();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task CheckMatch()
+    {
+        try
+        {
+            var move = new GameMoveDto
+            {
+                Card1Id = _selectedCards[0],
+                Card2Id = _selectedCards[1],
+                ClientTimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+
+            var result = await GameApi.SubmitMoveAsync(Guid.Parse(GameId!), move);
+
+            if (result.IsCorrect)
+            {
+                _matchedCards.Add(_selectedCards[0]);
+                _matchedCards.Add(_selectedCards[1]);
+                _pairsFound++;
+                Snackbar.Add($"+{result.PointsAwarded} points!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"{result.PointsAwarded} points", Severity.Warning);
+            }
+
+            _score = result.Score;
+            _selectedCards.Clear();
+
+            if (result.IsGameComplete)
+            {
+                await CompleteGame();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            _selectedCards.Clear();
+        }
+    }
+
+    private async Task CompleteGame()
+    {
+        _timer?.Dispose();
+        _gameComplete = true;
+
+        try
+        {
+            var result = await GameApi.CompleteGameAsync(Guid.Parse(GameId!));
+            _isWinner = result.IsWinner;
+            _score = result.Score;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error completing game: {ex.Message}", Severity.Error);
+        }
+
+        StateHasChanged();
+    }
+
+    private void PlayAgain()
+    {
+        Navigation.NavigateTo("/play");
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        GameHub.LeaveGameAsync(GameId!);
+    }
+}

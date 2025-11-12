@@ -1,0 +1,119 @@
+;; TwinsWins Factory Contract
+;; Deploys and manages game instances
+
+#include "stdlib.fc";
+
+;; Storage layout
+;; game_counter: int
+;; platform_address: MsgAddress
+;; game_code: cell
+;; platform_fee: int (basis points)
+;; affiliate_fee: int (basis points)
+
+(int, slice, cell, int, int) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (
+        ds~load_uint(64),     ;; game_counter
+        ds~load_msg_addr(),   ;; platform_address
+        ds~load_ref(),        ;; game_code
+        ds~load_uint(16),     ;; platform_fee (1500 = 15%)
+        ds~load_uint(16)      ;; affiliate_fee (300 = 3%)
+    );
+}
+
+() save_data(int counter, slice platform, cell code, int platform_fee, int affiliate_fee) impure inline {
+    set_data(
+        begin_cell()
+            .store_uint(counter, 64)
+            .store_slice(platform)
+            .store_ref(code)
+            .store_uint(platform_fee, 16)
+            .store_uint(affiliate_fee, 16)
+            .end_cell()
+    );
+}
+
+cell calculate_game_state_init(int game_id, cell game_code, slice creator, int stake) inline {
+    cell data = begin_cell()
+        .store_slice(creator)
+        .store_uint(0, 2)  ;; null joiner address
+        .store_coins(stake)
+        .store_int(-1, 32)  ;; creator_score not set
+        .store_int(-1, 32)  ;; joiner_score not set
+        .store_int(0, 8)    ;; status: created
+        .store_uint(now() + 600, 32)  ;; expiration: 10 minutes
+        .store_slice(my_address())  ;; factory address
+        .store_uint(1500, 16)  ;; platform_fee
+        .store_uint(300, 16)   ;; affiliate_fee
+        .end_cell();
+    
+    return begin_cell()
+        .store_uint(0, 2)
+        .store_dict(game_code)
+        .store_dict(data)
+        .store_uint(0, 1)
+        .end_cell();
+}
+
+slice calculate_game_address(cell state_init) inline {
+    return begin_cell()
+        .store_uint(4, 3)
+        .store_int(0, 8)
+        .store_uint(cell_hash(state_init), 256)
+        .end_cell()
+        .begin_parse();
+}
+
+() create_game(slice creator, int stake) impure {
+    var (counter, platform, game_code, platform_fee, affiliate_fee) = load_data();
+    
+    throw_unless(200, stake > 0);  ;; Stake must be positive
+    
+    ;; Increment game counter
+    counter += 1;
+    
+    ;; Calculate state init
+    cell state_init = calculate_game_state_init(counter, game_code, creator, stake);
+    slice game_address = calculate_game_address(state_init);
+    
+    ;; Deploy game contract
+    var msg = begin_cell()
+        .store_uint(0x18, 6)
+        .store_slice(game_address)
+        .store_coins(stake)  ;; Send stake amount
+        .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+        .store_ref(state_init)
+        .store_ref(begin_cell().end_cell());  ;; empty body
+    
+    send_raw_message(msg.end_cell(), 1);
+    
+    ;; Save updated counter
+    save_data(counter, platform, game_code, platform_fee, affiliate_fee);
+}
+
+;; Get methods
+int get_total_games() method_id {
+    var (counter, _, _, _, _) = load_data();
+    return counter;
+}
+
+slice get_platform_address() method_id {
+    var (_, platform, _, _, _) = load_data();
+    return platform;
+}
+
+(int, int) get_fees() method_id {
+    var (_, _, _, platform_fee, affiliate_fee) = load_data();
+    return (platform_fee, affiliate_fee);
+}
+
+slice get_game_address(int game_id, slice creator, int stake) method_id {
+    var (_, _, game_code, _, _) = load_data();
+    cell state_init = calculate_game_state_init(game_id, game_code, creator, stake);
+    return calculate_game_address(state_init);
+}
+
+;; TODO: Add recv_internal() to handle game creation requests
+;; TODO: Add admin functions to update fees
+;; TODO: Add function to update game code (upgradability)
+;; TODO: Implement access control for admin functions

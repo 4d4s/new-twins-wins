@@ -1,0 +1,35 @@
+{
+  "name": "twinswins-contracts",
+  "version": "0.1.0",
+  "description": "TON smart contracts for TwinsWins game",
+  "scripts": {
+    "build": "blueprint build",
+    "test": "blueprint test",
+    "deploy:testnet": "blueprint run --network testnet",
+    "deploy:mainnet": "blueprint run --network mainnet"
+  },
+  "keywords": [
+    "TON",
+    "smart-contract",
+    "blockchain",
+    "game"
+  ],
+  "author": "TwinsWins Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@ton-community/blueprint": "^0.13.0",
+    "@ton-community/sandbox": "^0.13.0",
+    "@ton-community/test-utils": "^0.3.0",
+    "@types/jest": "^29.5.5",
+    "@types/node": "^20.8.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "@ton-community/func-js": "^0.6.2",
+    "ton": "^13.11.0",
+    "ton-core": "^0.53.0",
+    "ton-crypto": "^3.2.0"
+  }
+}

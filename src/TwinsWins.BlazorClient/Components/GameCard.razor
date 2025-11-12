@@ -1,0 +1,70 @@
+@using TwinsWins.Core.DTOs
+@using MudBlazor
+
+<MudCard Class="@GetCardClass()" Style="@GetCardStyle()" @onclick="OnClick">
+    <MudCardContent Class="pa-2">
+        @if (IsMatched)
+        {
+            <div class="card-matched">✓</div>
+        }
+        else
+        {
+            <MudImage Src="@Card.ImageUrl" Alt="Card" ObjectFit="ObjectFit.Cover" Height="100" />
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public CardDto Card { get; set; } = null!;
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public bool IsMatched { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string GetCardClass()
+    {
+        var classes = new List<string> { "game-card" };
+        
+        if (IsSelected)
+            classes.Add("selected");
+        
+        if (IsMatched)
+            classes.Add("matched");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetCardStyle()
+    {
+        return IsMatched ? "opacity: 0.5; cursor: default;" : "cursor: pointer;";
+    }
+}
+
+<style>
+    .game-card {
+        transition: all 0.3s ease;
+        border: 3px solid transparent;
+    }
+
+    .game-card.selected {
+        border-color: #1976d2;
+        transform: scale(0.95);
+    }
+
+    .game-card.matched {
+        border-color: #4caf50;
+    }
+
+    .game-card:hover:not(.matched) {
+        transform: scale(1.05);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+
+    .card-matched {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100px;
+        font-size: 3rem;
+        color: #4caf50;
+    }
+</style>

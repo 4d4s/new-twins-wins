@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Include TON contract files as content -->
+    <None Include="contracts\**\*.fc" />
+    <None Include="wrappers\**\*.ts" />
+    <None Include="tests\**\*.ts" />
+    <None Include="scripts\**\*.ts" />
+    <None Include="package.json" />
+    <None Include="README.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- TON SDK integration - commented out until proper SDK is available -->
+    <!-- 
+    <PackageReference Include="TonSdk.Client" Version="3.1.0" />
+    <PackageReference Include="TonSdk.Core" Version="3.1.0" />
+    -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TwinsWins.Core\TwinsWins.Core.csproj" />
+  </ItemGroup>
+
+</Project>

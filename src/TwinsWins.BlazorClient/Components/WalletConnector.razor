@@ -1,0 +1,74 @@
+@using TwinsWins.BlazorClient.State.User
+@using TwinsWins.BlazorClient.Services
+@using MudBlazor
+@using Fluxor
+@inject IState<UserState> UserState
+@inject IDispatcher Dispatcher
+@inject ISnackbar Snackbar
+
+@if (UserState.Value.IsAuthenticated && !string.IsNullOrEmpty(UserState.Value.WalletAddress))
+{
+    <MudChip Icon="@Icons.Material.Filled.AccountBalanceWallet" Color="Color.Success">
+        @ShortAddress
+    </MudChip>
+    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" OnClick="Disconnect" />
+}
+else if (UserState.Value.IsConnecting)
+{
+    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+}
+else
+{
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Connect">
+        Connect Wallet
+    </MudButton>
+}
+
+@code {
+    private string ShortAddress
+    {
+        get
+        {
+            var address = UserState.Value.WalletAddress;
+            return address != null && address.Length > 10 
+                ? $"{address[..6]}...{address[^4..]}" 
+                : "";
+        }
+    }
+
+    private void Connect()
+    {
+        Dispatcher.Dispatch(new ConnectWalletAction());
+    }
+
+    private void Disconnect()
+    {
+        Dispatcher.Dispatch(new DisconnectWalletAction());
+        Snackbar.Add("Wallet disconnected", Severity.Info);
+    }
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to state changes
+        UserState.StateChanged += OnStateChanged;
+    }
+
+    private void OnStateChanged(object? sender, EventArgs e)
+    {
+        if (!string.IsNullOrEmpty(UserState.Value.ErrorMessage))
+        {
+            Snackbar.Add($"Error: {UserState.Value.ErrorMessage}", Severity.Error);
+        }
+        else if (UserState.Value.IsAuthenticated)
+        {
+            Snackbar.Add("Wallet connected successfully!", Severity.Success);
+        }
+        
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        UserState.StateChanged -= OnStateChanged;
+    }
+}
