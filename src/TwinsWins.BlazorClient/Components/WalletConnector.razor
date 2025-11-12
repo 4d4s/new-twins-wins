@@ -8,7 +8,7 @@
 
 @if (UserState.Value.IsAuthenticated && !string.IsNullOrEmpty(UserState.Value.WalletAddress))
 {
-    <MudChip Icon="@Icons.Material.Filled.AccountBalanceWallet" Color="Color.Success">
+    <MudChip T="string" Icon="@Icons.Material.Filled.AccountBalanceWallet" Color="Color.Success">
         @ShortAddress
     </MudChip>
     <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" OnClick="Disconnect" />

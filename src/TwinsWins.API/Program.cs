@@ -8,6 +8,7 @@ using TwinsWins.Infrastructure.Data;
 using TwinsWins.Core.Interfaces;
 using TwinsWins.Infrastructure.Services;
 using TwinsWins.API.Hubs;
+using Microsoft.Extensions.Caching.StackExchangeRedis; // Add this using directive at the top of the file
 
 var builder = WebApplication.CreateBuilder(args);
 
