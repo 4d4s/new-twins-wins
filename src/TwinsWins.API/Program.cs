@@ -162,11 +162,11 @@ app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 
 // Apply migrations on startup (only in development)
-if (app.Environment.IsDevelopment())
-{
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await dbContext.Database.MigrateAsync();
-}
+//if (app.Environment.IsDevelopment())
+//{
+//    using var scope = app.Services.CreateScope();
+//    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+//    await dbContext.Database.MigrateAsync();
+//}
 
 app.Run();
