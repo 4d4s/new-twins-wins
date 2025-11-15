@@ -1,0 +1,160 @@
+@page "/profile"
+@using TwinsWins.BlazorClient.State.User
+@using MudBlazor
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+@inject IState<UserState> UserState
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Profile - TwinsWins</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium">
+    @if (!UserState.Value.IsAuthenticated)
+    {
+        <MudPaper Elevation="3" Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.h5" Class="mt-4">Connect Your Wallet</MudText>
+            <MudText Color="Color.Secondary" Class="mb-4">
+                Please connect your TON wallet to view your profile
+            </MudText>
+            <WalletConnector />
+        </MudPaper>
+    }
+    else
+    {
+        <MudText Typo="Typo.h3" GutterBottom="true">
+            <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-2" />
+            My Profile
+        </MudText>
+
+        <MudGrid>
+            <!-- User Info Card -->
+            <MudItem xs="12">
+                <MudPaper Elevation="3" Class="pa-6">
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.h6">Wallet Address</MudText>
+                            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                                @UserState.Value.WalletAddress
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.h6">Username</MudText>
+                            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                                @(UserState.Value.Username ?? "Not set")
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Stats Cards -->
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="2" Class="pa-4 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Large" Color="Color.Primary" />
+                    <MudText Typo="Typo.h4" Class="mt-2">0</MudText>
+                    <MudText Color="Color.Secondary">Games Played</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="2" Class="pa-4 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Size="Size.Large" Color="Color.Success" />
+                    <MudText Typo="Typo.h4" Class="mt-2">0</MudText>
+                    <MudText Color="Color.Secondary">Wins</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="2" Class="pa-4 text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Percent" Size="Size.Large" Color="Color.Warning" />
+                    <MudText Typo="Typo.h4" Class="mt-2">0%</MudText>
+                    <MudText Color="Color.Secondary">Win Rate</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Skill Rating -->
+            <MudItem xs="12">
+                <MudPaper Elevation="2" Class="pa-6">
+                    <MudText Typo="Typo.h6" GutterBottom="true">
+                        <MudIcon Icon="@Icons.Material.Filled.Star" Class="mr-2" />
+                        Skill Rating
+                    </MudText>
+                    <MudText Typo="Typo.h3" Color="Color.Primary">1000</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Starting rating - play games to improve!
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Affiliate Info -->
+            <MudItem xs="12">
+                <MudPaper Elevation="2" Class="pa-6">
+                    <MudText Typo="Typo.h6" GutterBottom="true">
+                        <MudIcon Icon="@Icons.Material.Filled.Share" Class="mr-2" />
+                        Referral Program
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        Share your referral code and earn 3% of your referrals' game stakes!
+                    </MudText>
+                    <MudTextField @bind-Value="@_referralCode" 
+                                 Label="Your Referral Code" 
+                                 Variant="Variant.Outlined"
+                                 ReadOnly="true"
+                                 Adornment="Adornment.End"
+                                 AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                                 OnAdornmentClick="CopyReferralCode" />
+                    <MudGrid Class="mt-3">
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2">Total Referrals</MudText>
+                            <MudText Typo="Typo.h6">0</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.body2">Total Earnings</MudText>
+                            <MudText Typo="Typo.h6">0 TON</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Quick Actions -->
+            <MudItem xs="12">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.h6" GutterBottom="true">Quick Actions</MudText>
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudButton Variant="Variant.Filled" 
+                                      Color="Color.Primary" 
+                                      FullWidth="true"
+                                      StartIcon="@Icons.Material.Filled.PlayArrow"
+                                      Href="/play">
+                                Play Game
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudButton Variant="Variant.Outlined" 
+                                      Color="Color.Primary" 
+                                      FullWidth="true"
+                                      StartIcon="@Icons.Material.Filled.History"
+                                      Href="/history">
+                                View History
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private string _referralCode = "USER001"; // TODO: Load from user data
+
+    private void CopyReferralCode()
+    {
+        // TODO: Implement clipboard copy
+        Snackbar.Add("Referral code copied!", Severity.Success);
+    }
+}

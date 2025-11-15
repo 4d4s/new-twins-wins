@@ -1,6 +1,5 @@
 using Fluxor;
 using TwinsWins.BlazorClient.Services;
-using TwinsWins.Core.DTOs;
 
 namespace TwinsWins.BlazorClient.State.Game;
 
@@ -59,26 +58,40 @@ public class GameEffects
     }
 
     [EffectMethod]
+    public async Task HandleJoinGameAction(JoinGameAction action, IDispatcher dispatcher)
+    {
+        try
+        {
+            var game = await _gameApi.JoinGameAsync(action.GameId);
+            dispatcher.Dispatch(new JoinGameSuccessAction(game));
+        }
+        catch (Exception ex)
+        {
+            dispatcher.Dispatch(new JoinGameFailureAction(ex.Message));
+        }
+    }
+
+    [EffectMethod]
+    public async Task HandleLoadLobbiesAction(LoadLobbiesAction action, IDispatcher dispatcher)
+    {
+        try
+        {
+            var lobbies = await _gameApi.GetActiveLobbiesAsync(action.Skip, action.Take);
+            dispatcher.Dispatch(new LoadLobbiesSuccessAction(lobbies));
+        }
+        catch (Exception ex)
+        {
+            dispatcher.Dispatch(new LoadLobbiesFailureAction(ex.Message));
+        }
+    }
+
+    [EffectMethod]
     public async Task HandleSubmitMoveAction(SubmitMoveAction action, IDispatcher dispatcher)
     {
         try
         {
-            var gameId = action.Move.Card1Id; // TODO: Get actual game ID from state
-            // This is a workaround - you'd need to get gameId from the current state
-            // For now, we'll need to pass it differently or store it in the move
-            
-            // var result = await _gameApi.SubmitMoveAsync(gameId, action.Move);
-            // dispatcher.Dispatch(new SubmitMoveSuccessAction(result));
-            
-            // Temporary: dispatch success with mock data
-            var mockResult = new GameResultDto
-            {
-                IsCorrect = true,
-                Score = 100,
-                PointsAwarded = 100,
-                IsGameComplete = false
-            };
-            dispatcher.Dispatch(new SubmitMoveSuccessAction(mockResult));
+            var result = await _gameApi.SubmitMoveAsync(action.GameId, action.Move);
+            dispatcher.Dispatch(new SubmitMoveSuccessAction(result));
         }
         catch (Exception ex)
         {
@@ -91,15 +104,12 @@ public class GameEffects
     {
         try
         {
-            // TODO: Get game ID from state
-            // var result = await _gameApi.CompleteGameAsync(gameId);
-            // dispatcher.Dispatch(new CompleteGameSuccessAction(result));
-            
-            await Task.CompletedTask; // Placeholder
+            var result = await _gameApi.CompleteGameAsync(action.GameId);
+            dispatcher.Dispatch(new CompleteGameSuccessAction(result));
         }
         catch (Exception ex)
         {
-            // Handle error
+            dispatcher.Dispatch(new CompleteGameFailureAction(ex.Message));
         }
     }
 }

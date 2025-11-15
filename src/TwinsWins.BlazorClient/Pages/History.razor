@@ -1,0 +1,156 @@
+@page "/history"
+@using TwinsWins.BlazorClient.State.User
+@using MudBlazor
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+@inject IState<UserState> UserState
+@inject ISnackbar Snackbar
+
+<PageTitle>Game History - TwinsWins</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudText Typo="Typo.h3" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.History" Class="mr-2" />
+        Game History
+    </MudText>
+
+    @if (!UserState.Value.IsAuthenticated)
+    {
+        <MudPaper Elevation="3" Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.h5" Class="mt-4">Connect Your Wallet</MudText>
+            <MudText Color="Color.Secondary" Class="mb-4">
+                Please connect your TON wallet to view your game history
+            </MudText>
+            <WalletConnector />
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Elevation="2" Class="pa-4 mb-4">
+            <MudGrid>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSelect T="string" Label="Filter by Type" Variant="Variant.Outlined" @bind-Value="_selectedType">
+                        <MudSelectItem Value="@("all")">All Games</MudSelectItem>
+                        <MudSelectItem Value="@("free")">Free Games</MudSelectItem>
+                        <MudSelectItem Value="@("paid")">Paid Games</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSelect T="string" Label="Filter by Result" Variant="Variant.Outlined" @bind-Value="_selectedResult">
+                        <MudSelectItem Value="@("all")">All Results</MudSelectItem>
+                        <MudSelectItem Value="@("won")">Wins</MudSelectItem>
+                        <MudSelectItem Value="@("lost")">Losses</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @if (_isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+            <MudText Align="Align.Center">Loading history...</MudText>
+        }
+        else if (_gameHistory.Count == 0)
+        {
+            <MudPaper Elevation="2" Class="pa-8 text-center">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.h6" Class="mt-4">No Games Played Yet</MudText>
+                <MudText Color="Color.Secondary" Class="mb-4">
+                    Start playing to build your game history!
+                </MudText>
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          StartIcon="@Icons.Material.Filled.PlayArrow"
+                          Href="/play">
+                    Play Your First Game
+                </MudButton>
+            </MudPaper>
+        }
+        else
+        {
+            <MudTable Items="@_gameHistory" Hover="true" Breakpoint="Breakpoint.Sm" Loading="@_isLoading" Dense="true">
+                <HeaderContent>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Type</MudTh>
+                    <MudTh>Opponent</MudTh>
+                    <MudTh>Score</MudTh>
+                    <MudTh>Result</MudTh>
+                    <MudTh>Prize</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Date">@context.Date.ToString("MMM dd, yyyy")</MudTd>
+                    <MudTd DataLabel="Type">
+                        <MudChip Size="Size.Small" Color="@(context.IsPaid ? Color.Success : Color.Info)">
+                            @(context.IsPaid ? "Paid" : "Free")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Opponent">@context.Opponent</MudTd>
+                    <MudTd DataLabel="Score">@context.MyScore - @context.OpponentScore</MudTd>
+                    <MudTd DataLabel="Result">
+                        <MudChip Size="Size.Small" Color="@(context.IsWin ? Color.Success : Color.Error)">
+                            @(context.IsWin ? "Won" : "Lost")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Prize">
+                        @if (context.Prize > 0)
+                        {
+                            <MudText Color="Color.Success">+@context.Prize TON</MudText>
+                        }
+                        else if (context.Prize < 0)
+                        {
+                            <MudText Color="Color.Error">@context.Prize TON</MudText>
+                        }
+                        else
+                        {
+                            <MudText>-</MudText>
+                        }
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+                </PagerContent>
+            </MudTable>
+        }
+    }
+</MudContainer>
+
+@code {
+    private bool _isLoading = false;
+    private string _selectedType = "all";
+    private string _selectedResult = "all";
+    private List<GameHistoryItem> _gameHistory = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (UserState.Value.IsAuthenticated)
+        {
+            await LoadHistory();
+        }
+    }
+
+    private async Task LoadHistory()
+    {
+        _isLoading = true;
+        
+        // TODO: Load actual game history from API
+        await Task.Delay(500); // Simulate API call
+        
+        // Mock data for demonstration
+        _gameHistory = new List<GameHistoryItem>();
+        
+        _isLoading = false;
+    }
+
+    private class GameHistoryItem
+    {
+        public DateTime Date { get; set; }
+        public bool IsPaid { get; set; }
+        public string Opponent { get; set; } = string.Empty;
+        public int MyScore { get; set; }
+        public int OpponentScore { get; set; }
+        public bool IsWin { get; set; }
+        public decimal Prize { get; set; }
+    }
+}

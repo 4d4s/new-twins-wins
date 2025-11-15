@@ -108,14 +108,15 @@ public class GameService : IGameService
         // Record stake transaction
         var transaction = new BlockchainTransaction
         {
-            WalletAddress = (await _context.Users.FindAsync(userId))!.WalletAddress,
+            FromWallet = (await _context.Users.FindAsync(userId))!.WalletAddress,
+            ToWallet = contractAddress,
             GameId = game.Id,
-            Type = TransactionType.Stake,
+            Type = BlockchainTransactionType.GameStake,
             Amount = stakeAmount,
-            Status = TransactionStatus.Pending
+            Status = BlockchainTransactionStatus.Pending
         };
 
-        _context.Transactions.Add(transaction);
+        _context.BlockchainTransactions.Add(transaction);
         await _context.SaveChangesAsync();
 
         return await MapToGameDto(game);
@@ -147,17 +148,17 @@ public class GameService : IGameService
 
         _context.GameParticipants.Add(participant);
 
-        // Record stake transaction for joiner
         var transaction = new BlockchainTransaction
         {
-            WalletAddress = (await _context.Users.FindAsync(userId))!.WalletAddress,
+            FromWallet = (await _context.Users.FindAsync(userId))!.WalletAddress,
+            ToWallet = game.SmartContractAddress ?? "",
             GameId = game.Id,
-            Type = TransactionType.Stake,
+            Type = BlockchainTransactionType.GameStake,  // Fixed: use BlockchainTransactionType.GameStake
             Amount = game.StakeAmount!.Value,
-            Status = TransactionStatus.Pending
+            Status = BlockchainTransactionStatus.Pending  // Fixed: use BlockchainTransactionStatus.Pending
         };
 
-        _context.Transactions.Add(transaction);
+        _context.BlockchainTransactions.Add(transaction);
 
         // Update game status
         game.Status = GameStatus.Active;

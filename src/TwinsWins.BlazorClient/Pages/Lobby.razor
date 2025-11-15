@@ -1,11 +1,13 @@
 @page "/lobby"
 @using TwinsWins.Core.DTOs
 @using TwinsWins.BlazorClient.State.Game
+@using TwinsWins.BlazorClient.State.User
 @using MudBlazor
 @using Fluxor
 @using Fluxor.Blazor.Web.Components
 @inherits FluxorComponent
 @inject IState<GameState> GameState
+@inject IState<UserState> UserState
 @inject IDispatcher Dispatcher
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -38,7 +40,8 @@
                           Color="Color.Primary" 
                           FullWidth="true"
                           StartIcon="@Icons.Material.Filled.Refresh"
-                          OnClick="RefreshLobbies">
+                          OnClick="RefreshLobbies"
+                          Disabled="GameState.Value.IsLoading">
                     Refresh
                 </MudButton>
             </MudItem>
@@ -56,7 +59,7 @@
             @GameState.Value.ErrorMessage
         </MudAlert>
     }
-    else if (_lobbies == null || !_lobbies.Any())
+    else if (GameState.Value.Lobbies == null || !GameState.Value.Lobbies.Any())
     {
         <MudPaper Elevation="2" Class="pa-8 text-center">
             <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" />
@@ -75,7 +78,7 @@
     else
     {
         <MudGrid>
-            @foreach (var lobby in _lobbies)
+            @foreach (var lobby in GameState.Value.Lobbies)
             {
                 <MudItem xs="12" md="6" lg="4">
                     <MudCard Elevation="3" Class="lobby-card">
@@ -85,7 +88,7 @@
                                     @GetStakeDisplay(lobby.StakeAmount)
                                 </MudText>
                                 <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    @lobby.ImageSet?.Name ?? "Unknown Set"
+                                    @(lobby.ImageSet?.Name ?? "Unknown Set")
                                 </MudText>
                             </CardHeaderContent>
                             <CardHeaderActions>
@@ -127,8 +130,16 @@
                             <MudButton Variant="Variant.Filled" 
                                       Color="Color.Success" 
                                       FullWidth="true"
-                                      OnClick="@(() => JoinLobby(lobby.Id))">
-                                Join Game
+                                      OnClick="@(() => JoinLobby(lobby.Id))"
+                                      Disabled="!UserState.Value.IsAuthenticated || GameState.Value.IsLoading">
+                                @if (!UserState.Value.IsAuthenticated)
+                                {
+                                    <span>Connect Wallet to Join</span>
+                                }
+                                else
+                                {
+                                    <span>Join Game</span>
+                                }
                             </MudButton>
                         </MudCardActions>
                     </MudCard>
@@ -150,31 +161,16 @@
 </style>
 
 @code {
-    private List<GameDto>? _lobbies;
-
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        
-        // Subscribe to state changes
-        GameState.StateChanged += OnStateChanged;
         
         // Load lobbies on mount
         LoadLobbies();
     }
 
-    private void OnStateChanged(object? sender, EventArgs e)
-    {
-        // Update local lobbies list from state
-        // In a full implementation, you'd have a LobbiesState
-        // For now, we'll dispatch a load action
-        StateHasChanged();
-    }
-
     private void LoadLobbies()
     {
-        // Dispatch action to load lobbies
-        // Note: You'll need to create LoadLobbiesAction in your GameActions
         Dispatcher.Dispatch(new LoadLobbiesAction());
     }
 
@@ -186,11 +182,15 @@
 
     private void JoinLobby(Guid gameId)
     {
-        // Dispatch action to join game
+        if (!UserState.Value.IsAuthenticated)
+        {
+            Snackbar.Add("Please connect your wallet first!", Severity.Warning);
+            return;
+        }
+
         Dispatcher.Dispatch(new JoinGameAction(gameId));
         
-        // Navigate will happen in the effect after successful join
-        // For now, navigate immediately
+        // Navigate after dispatching - the effect will handle the API call
         Navigation.NavigateTo($"/game/{gameId}");
     }
 
@@ -241,11 +241,5 @@
             Core.Enums.Difficulty.Hard => Color.Error,
             _ => Color.Default
         };
-    }
-
-    public override void Dispose()
-    {
-        GameState.StateChanged -= OnStateChanged;
-        base.Dispose();
     }
 }

@@ -1,0 +1,205 @@
+@page "/leaderboard"
+@using MudBlazor
+
+<PageTitle>Leaderboard - TwinsWins</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudText Typo="Typo.h3" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.Leaderboard" Class="mr-2" />
+        Leaderboard
+    </MudText>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudSelect T="string" Label="Time Period" Variant="Variant.Outlined" @bind-Value="_selectedPeriod" ValueChanged="OnFilterChanged">
+                    <MudSelectItem Value="@("today")">Today</MudSelectItem>
+                    <MudSelectItem Value="@("week")">This Week</MudSelectItem>
+                    <MudSelectItem Value="@("month")">This Month</MudSelectItem>
+                    <MudSelectItem Value="@("alltime")">All Time</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudSelect T="string" Label="Category" Variant="Variant.Outlined" @bind-Value="_selectedCategory" ValueChanged="OnFilterChanged">
+                    <MudSelectItem Value="@("wins")">Most Wins</MudSelectItem>
+                    <MudSelectItem Value="@("winrate")">Highest Win Rate</MudSelectItem>
+                    <MudSelectItem Value="@("earnings")">Top Earnings</MudSelectItem>
+                    <MudSelectItem Value="@("rating")">Highest Rating</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+        <MudText Align="Align.Center">Loading leaderboard...</MudText>
+    }
+    else if (_leaderboard.Count == 0)
+    {
+        <MudPaper Elevation="2" Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.h6" Class="mt-4">No Data Available</MudText>
+            <MudText Color="Color.Secondary">
+                Be the first to appear on the leaderboard!
+            </MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Elevation="3">
+            <MudList Clickable="false">
+                @foreach (var (player, index) in _leaderboard.Select((p, i) => (p, i)))
+                {
+                    <MudListItem Class="@GetRankClass(index)" Style="padding: 16px;">
+                        <MudGrid>
+                            <MudItem xs="2" sm="1" Class="d-flex align-center">
+                                @if (index < 3)
+                                {
+                                    <MudIcon Icon="@GetTrophyIcon(index)" Color="@GetRankColor(index)" Size="Size.Large" />
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.h6" Color="@GetRankColor(index)">
+                                        @GetRankDisplay(index)
+                                    </MudText>
+                                }
+                            </MudItem>
+                            <MudItem xs="6" sm="5" Class="d-flex align-center">
+                                <MudAvatar Color="Color.Primary" Class="mr-3">
+                                    @GetInitials(player.Username)
+                                </MudAvatar>
+                                <div>
+                                    <MudText Typo="Typo.body1">@player.Username</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @GetWalletShort(player.WalletAddress)
+                                    </MudText>
+                                </div>
+                            </MudItem>
+                            <MudItem xs="4" sm="6" Class="d-flex align-center justify-end">
+                                <div Class="text-right">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@GetStatLabel()</MudText>
+                                    <MudText Typo="Typo.h6" Color="Color.Primary">@GetStatValue(player)</MudText>
+                                </div>
+                            </MudItem>
+                        </MudGrid>
+                    </MudListItem>
+                    @if (index < _leaderboard.Count - 1)
+                    {
+                        <MudDivider />
+                    }
+                }
+            </MudList>
+        </MudPaper>
+    }
+</MudContainer>
+
+<style>
+    .rank-1, .rank-2, .rank-3 {
+        background: linear-gradient(90deg, rgba(255,215,0,0.1) 0%, transparent 100%);
+    }
+
+    .rank-1 { border-left: 4px solid #FFD700; }
+    .rank-2 { border-left: 4px solid #C0C0C0; }
+    .rank-3 { border-left: 4px solid #CD7F32; }
+</style>
+
+@code {
+    private bool _isLoading = false;
+    private string _selectedPeriod = "week";
+    private string _selectedCategory = "wins";
+    private List<LeaderboardPlayer> _leaderboard = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLeaderboard();
+    }
+
+    private async Task OnFilterChanged(string value)
+    {
+        await LoadLeaderboard();
+    }
+
+    private async Task LoadLeaderboard()
+    {
+        _isLoading = true;
+        StateHasChanged();
+        
+        // TODO: Load actual leaderboard from API
+        await Task.Delay(500); // Simulate API call
+        
+        // Mock data for demonstration
+        _leaderboard = new List<LeaderboardPlayer>
+        {
+            new LeaderboardPlayer { Username = "CryptoKing", WalletAddress = "EQAbc123def456ghi789jkl", Wins = 150, WinRate = 75.5m, Earnings = 245.50m, Rating = 1850 },
+            new LeaderboardPlayer { Username = "TONMaster", WalletAddress = "EQXyz987uvw654rst321pqr", Wins = 142, WinRate = 72.8m, Earnings = 198.30m, Rating = 1780 },
+            new LeaderboardPlayer { Username = "MemoryChamp", WalletAddress = "EQQwe456rty789uio123asd", Wins = 135, WinRate = 70.2m, Earnings = 175.80m, Rating = 1720 },
+            new LeaderboardPlayer { Username = "QuickThinker", WalletAddress = "EQZxc789bnm456vbn123fgh", Wins = 128, WinRate = 68.9m, Earnings = 156.40m, Rating = 1680 },
+            new LeaderboardPlayer { Username = "PuzzlePro", WalletAddress = "EQKjh654lkj321poi098mnb", Wins = 120, WinRate = 66.5m, Earnings = 142.20m, Rating = 1640 }
+        };
+        
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    private string GetRankClass(int index) => index < 3 ? $"rank-{index + 1}" : "";
+
+    private Color GetRankColor(int index) => index switch
+    {
+        0 => Color.Warning,
+        1 => Color.Default,
+        2 => Color.Tertiary,
+        _ => Color.Default
+    };
+
+    private string GetRankDisplay(int index) => $"#{index + 1}";
+
+    private string GetTrophyIcon(int index) => index switch
+    {
+        0 => Icons.Material.Filled.EmojiEvents,
+        1 => Icons.Material.Filled.EmojiEvents,
+        2 => Icons.Material.Filled.EmojiEvents,
+        _ => ""
+    };
+
+    private string GetInitials(string username)
+    {
+        if (string.IsNullOrEmpty(username)) return "??";
+        var parts = username.Split(' ');
+        if (parts.Length > 1)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return username[..Math.Min(2, username.Length)].ToUpper();
+    }
+
+    private string GetWalletShort(string wallet) => 
+        wallet.Length > 10 ? $"{wallet[..6]}...{wallet[^4..]}" : wallet;
+
+    private string GetStatLabel() => _selectedCategory switch
+    {
+        "wins" => "Wins",
+        "winrate" => "Win Rate",
+        "earnings" => "Earnings",
+        "rating" => "Rating",
+        _ => "Score"
+    };
+
+    private string GetStatValue(LeaderboardPlayer player) => _selectedCategory switch
+    {
+        "wins" => player.Wins.ToString(),
+        "winrate" => $"{player.WinRate:F1}%",
+        "earnings" => $"{player.Earnings:F2} TON",
+        "rating" => player.Rating.ToString(),
+        _ => "0"
+    };
+
+    private class LeaderboardPlayer
+    {
+        public string Username { get; set; } = string.Empty;
+        public string WalletAddress { get; set; } = string.Empty;
+        public int Wins { get; set; }
+        public decimal WinRate { get; set; }
+        public decimal Earnings { get; set; }
+        public int Rating { get; set; }
+    }
+}
+

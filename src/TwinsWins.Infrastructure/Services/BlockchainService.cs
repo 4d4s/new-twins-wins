@@ -16,7 +16,7 @@ public class BlockchainService : IBlockchainService
 
     public Task<string> CreateGameContractAsync(Guid gameId, decimal stakeAmount)
     {
-        _logger.LogInformation("Creating TON contract for game {GameId} with stake {Stake}", 
+        _logger.LogInformation("Creating TON contract for game {GameId} with stake {Stake}",
             gameId, stakeAmount);
 
         // TODO: Implement actual TON contract creation
@@ -32,7 +32,7 @@ public class BlockchainService : IBlockchainService
 
     public Task<bool> ProcessPayoutAsync(Guid gameId, string winnerWallet, decimal amount)
     {
-        _logger.LogInformation("Processing payout for game {GameId}: {Amount} TON to {Wallet}", 
+        _logger.LogInformation("Processing payout for game {GameId}: {Amount} TON to {Wallet}",
             gameId, amount, winnerWallet);
 
         // TODO: Implement actual TON payout
@@ -47,7 +47,7 @@ public class BlockchainService : IBlockchainService
 
     public Task<bool> ProcessRefundAsync(Guid gameId, string walletAddress, decimal amount)
     {
-        _logger.LogInformation("Processing refund for game {GameId}: {Amount} TON to {Wallet}", 
+        _logger.LogInformation("Processing refund for game {GameId}: {Amount} TON to {Wallet}",
             gameId, amount, walletAddress);
 
         // TODO: Implement actual TON refund
@@ -72,9 +72,11 @@ public class BlockchainService : IBlockchainService
         return Task.FromResult(new BlockchainTransaction
         {
             TransactionHash = transactionHash,
-            Status = TransactionStatus.Confirmed,
+            Status = BlockchainTransactionStatus.Confirmed,
             Amount = 1.0m,
-            Currency = "TON"
+            FromWallet = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            ToWallet = "EQBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+            Type = BlockchainTransactionType.GamePayout
         });
     }
 

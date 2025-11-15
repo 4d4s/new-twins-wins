@@ -12,6 +12,7 @@ public static class GameReducers
     {
         return new GameState(
             currentGame: null,
+            lobbies: state.Lobbies,
             isLoading: true,
             errorMessage: null,
             currentScore: state.CurrentScore,
@@ -27,6 +28,7 @@ public static class GameReducers
     {
         return new GameState(
             currentGame: action.Game,
+            lobbies: state.Lobbies,
             isLoading: false,
             errorMessage: null,
             currentScore: 0,
@@ -42,6 +44,7 @@ public static class GameReducers
     {
         return new GameState(
             currentGame: null,
+            lobbies: state.Lobbies,
             isLoading: false,
             errorMessage: action.ErrorMessage,
             currentScore: state.CurrentScore,
@@ -57,6 +60,7 @@ public static class GameReducers
     {
         return new GameState(
             currentGame: action.Game,
+            lobbies: state.Lobbies,
             isLoading: false,
             errorMessage: null,
             currentScore: 0,
@@ -68,12 +72,125 @@ public static class GameReducers
     }
 
     [ReducerMethod]
+    public static GameState ReduceCreateGameFailureAction(GameState state, CreateGameFailureAction action)
+    {
+        return new GameState(
+            currentGame: state.CurrentGame,
+            lobbies: state.Lobbies,
+            isLoading: false,
+            errorMessage: action.ErrorMessage,
+            currentScore: state.CurrentScore,
+            timeRemaining: state.TimeRemaining,
+            selectedCards: state.SelectedCards,
+            matchedPairs: state.MatchedPairs,
+            isGameComplete: state.IsGameComplete
+        );
+    }
+
+    [ReducerMethod]
+    public static GameState ReduceJoinGameAction(GameState state, JoinGameAction action)
+    {
+        return new GameState(
+            currentGame: state.CurrentGame,
+            lobbies: state.Lobbies,
+            isLoading: true,
+            errorMessage: null,
+            currentScore: state.CurrentScore,
+            timeRemaining: state.TimeRemaining,
+            selectedCards: state.SelectedCards,
+            matchedPairs: state.MatchedPairs,
+            isGameComplete: state.IsGameComplete
+        );
+    }
+
+    [ReducerMethod]
+    public static GameState ReduceJoinGameSuccessAction(GameState state, JoinGameSuccessAction action)
+    {
+        return new GameState(
+            currentGame: action.Game,
+            lobbies: state.Lobbies,
+            isLoading: false,
+            errorMessage: null,
+            currentScore: 0,
+            timeRemaining: 60,
+            selectedCards: new List<int>(),
+            matchedPairs: new HashSet<int>(),
+            isGameComplete: false
+        );
+    }
+
+    [ReducerMethod]
+    public static GameState ReduceJoinGameFailureAction(GameState state, JoinGameFailureAction action)
+    {
+        return new GameState(
+            currentGame: state.CurrentGame,
+            lobbies: state.Lobbies,
+            isLoading: false,
+            errorMessage: action.ErrorMessage,
+            currentScore: state.CurrentScore,
+            timeRemaining: state.TimeRemaining,
+            selectedCards: state.SelectedCards,
+            matchedPairs: state.MatchedPairs,
+            isGameComplete: state.IsGameComplete
+        );
+    }
+
+    [ReducerMethod]
+    public static GameState ReduceLoadLobbiesAction(GameState state, LoadLobbiesAction action)
+    {
+        return new GameState(
+            currentGame: state.CurrentGame,
+            lobbies: state.Lobbies,
+            isLoading: true,
+            errorMessage: null,
+            currentScore: state.CurrentScore,
+            timeRemaining: state.TimeRemaining,
+            selectedCards: state.SelectedCards,
+            matchedPairs: state.MatchedPairs,
+            isGameComplete: state.IsGameComplete
+        );
+    }
+
+    [ReducerMethod]
+    public static GameState ReduceLoadLobbiesSuccessAction(GameState state, LoadLobbiesSuccessAction action)
+    {
+        return new GameState(
+            currentGame: state.CurrentGame,
+            lobbies: action.Lobbies.ToList(),
+            isLoading: false,
+            errorMessage: null,
+            currentScore: state.CurrentScore,
+            timeRemaining: state.TimeRemaining,
+            selectedCards: state.SelectedCards,
+            matchedPairs: state.MatchedPairs,
+            isGameComplete: state.IsGameComplete
+        );
+    }
+
+    [ReducerMethod]
+    public static GameState ReduceLoadLobbiesFailureAction(GameState state, LoadLobbiesFailureAction action)
+    {
+        return new GameState(
+            currentGame: state.CurrentGame,
+            lobbies: new List<Core.DTOs.GameDto>(),
+            isLoading: false,
+            errorMessage: action.ErrorMessage,
+            currentScore: state.CurrentScore,
+            timeRemaining: state.TimeRemaining,
+            selectedCards: state.SelectedCards,
+            matchedPairs: state.MatchedPairs,
+            isGameComplete: state.IsGameComplete
+        );
+    }
+
+    [ReducerMethod]
     public static GameState ReduceSelectCardAction(GameState state, SelectCardAction action)
     {
         var newSelectedCards = new List<int>(state.SelectedCards) { action.CardId };
-        
+
         return new GameState(
             currentGame: state.CurrentGame,
+            lobbies: state.Lobbies,
             isLoading: state.IsLoading,
             errorMessage: state.ErrorMessage,
             currentScore: state.CurrentScore,
@@ -89,6 +206,7 @@ public static class GameReducers
     {
         return new GameState(
             currentGame: state.CurrentGame,
+            lobbies: state.Lobbies,
             isLoading: state.IsLoading,
             errorMessage: state.ErrorMessage,
             currentScore: state.CurrentScore,
@@ -103,16 +221,16 @@ public static class GameReducers
     public static GameState ReduceSubmitMoveSuccessAction(GameState state, SubmitMoveSuccessAction action)
     {
         var newMatchedPairs = new HashSet<int>(state.MatchedPairs);
-        
-        if (action.Result.IsCorrect)
+
+        if (action.Result.IsCorrect && state.SelectedCards.Count == 2)
         {
-            // Add the pair to matched pairs
             var card1Pair = state.SelectedCards[0] / 2;
             newMatchedPairs.Add(card1Pair);
         }
 
         return new GameState(
             currentGame: state.CurrentGame,
+            lobbies: state.Lobbies,
             isLoading: false,
             errorMessage: null,
             currentScore: action.Result.Score,
@@ -128,6 +246,7 @@ public static class GameReducers
     {
         return new GameState(
             currentGame: state.CurrentGame,
+            lobbies: state.Lobbies,
             isLoading: state.IsLoading,
             errorMessage: state.ErrorMessage,
             currentScore: state.CurrentScore,
@@ -143,6 +262,7 @@ public static class GameReducers
     {
         return new GameState(
             currentGame: state.CurrentGame,
+            lobbies: state.Lobbies,
             isLoading: false,
             errorMessage: null,
             currentScore: action.Result.Score,

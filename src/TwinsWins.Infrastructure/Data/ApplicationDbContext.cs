@@ -3,29 +3,22 @@ using TwinsWins.Core.Entities;
 
 namespace TwinsWins.Infrastructure.Data;
 
-public class ApplicationDbContextUpdated : DbContext
+public class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContextUpdated(DbContextOptions<ApplicationDbContextUpdated> options)
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
     }
 
-    // Use new entity names that match database
     public DbSet<User> Users => Set<User>();
     public DbSet<Game> Games => Set<Game>();
     public DbSet<GameParticipant> GameParticipants => Set<GameParticipant>();
     public DbSet<GameMove> GameMoves => Set<GameMove>();
     public DbSet<ImageSet> ImageSets => Set<ImageSet>();
     public DbSet<ImagePair> ImagePairs => Set<ImagePair>();
-
-    // Changed from Transaction to BlockchainTransaction
     public DbSet<BlockchainTransaction> BlockchainTransactions => Set<BlockchainTransaction>();
-
     public DbSet<Coupon> Coupons => Set<Coupon>();
-
-    // Changed from CouponUsage to CouponRedemption
     public DbSet<CouponRedemption> CouponRedemptions => Set<CouponRedemption>();
-
     public DbSet<AffiliateLink> AffiliateLinks => Set<AffiliateLink>();
     public DbSet<AffiliatePayout> AffiliatePayouts => Set<AffiliatePayout>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -47,10 +40,10 @@ public class ApplicationDbContextUpdated : DbContext
             entity.HasOne(e => e.ReferredBy)
                 .WithMany()
                 .HasForeignKey(e => e.ReferredByUserId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
-        // BlockchainTransactions (renamed from Transaction)
+        // BlockchainTransactions
         modelBuilder.Entity<BlockchainTransaction>(entity =>
         {
             entity.ToTable("BlockchainTransactions");
@@ -72,11 +65,19 @@ public class ApplicationDbContextUpdated : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.Status, e.CreatedAt });
             entity.HasIndex(e => e.SmartContractAddress);
+            entity.HasIndex(e => e.GameType);
+            entity.HasIndex(e => e.TimeoutAt);
 
             entity.Property(e => e.StakeAmount).HasPrecision(18, 8);
+            entity.Property(e => e.Version).IsConcurrencyToken();
+
+            entity.HasOne(e => e.ImageSet)
+                .WithMany()
+                .HasForeignKey(e => e.ImageSetId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
-        // GameParticipant with PayoutTxHash
+        // GameParticipant
         modelBuilder.Entity<GameParticipant>(entity =>
         {
             entity.ToTable("GameParticipants");
@@ -110,6 +111,11 @@ public class ApplicationDbContextUpdated : DbContext
                 .WithMany(g => g.Moves)
                 .HasForeignKey(e => e.GameId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ImageSet configuration
@@ -134,7 +140,7 @@ public class ApplicationDbContextUpdated : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Coupon configuration (simplified)
+        // Coupon configuration
         modelBuilder.Entity<Coupon>(entity =>
         {
             entity.ToTable("Coupons");
@@ -145,7 +151,7 @@ public class ApplicationDbContextUpdated : DbContext
             entity.Property(e => e.Value).HasPrecision(18, 8);
         });
 
-        // CouponRedemption (renamed from CouponUsage)
+        // CouponRedemption
         modelBuilder.Entity<CouponRedemption>(entity =>
         {
             entity.ToTable("CouponRedemptions");
@@ -200,7 +206,7 @@ public class ApplicationDbContextUpdated : DbContext
 
             entity.Property(e => e.Amount).HasPrecision(18, 8);
 
-            entity.HasOne(e => e.Link)
+            entity.HasOne<AffiliateLink>()
                 .WithMany(l => l.Payouts)
                 .HasForeignKey(e => e.LinkId)
                 .OnDelete(DeleteBehavior.Cascade);
