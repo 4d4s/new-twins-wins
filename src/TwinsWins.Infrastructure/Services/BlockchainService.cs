@@ -59,7 +59,7 @@ public class BlockchainService : IBlockchainService
         return Task.FromResult(true);
     }
 
-    public Task<Transaction> VerifyTransactionAsync(string transactionHash)
+    public Task<BlockchainTransaction> VerifyTransactionAsync(string transactionHash)
     {
         _logger.LogInformation("Verifying transaction {Hash}", transactionHash);
 
@@ -69,7 +69,7 @@ public class BlockchainService : IBlockchainService
         // 3. Extract transaction details
 
         // Stub implementation
-        return Task.FromResult(new Transaction
+        return Task.FromResult(new BlockchainTransaction
         {
             TransactionHash = transactionHash,
             Status = TransactionStatus.Confirmed,

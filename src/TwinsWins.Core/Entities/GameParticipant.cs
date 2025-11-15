@@ -14,4 +14,5 @@ public class GameParticipant : BaseEntity
     public DateTime? CompletedAt { get; set; }
     public bool? IsWinner { get; set; }
     public decimal? PayoutAmount { get; set; }
+    public string? PayoutTxHash { get; set; }
 }

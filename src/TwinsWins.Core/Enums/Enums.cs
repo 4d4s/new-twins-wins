@@ -23,29 +23,33 @@ public enum ParticipantRole
     Joiner
 }
 
-public enum TransactionType
+/// <summary>
+/// Types of blockchain transactions (for BlockchainTransactions table)
+/// </summary>
+public enum BlockchainTransactionType
 {
-    Stake,
-    Payout,
-    Refund,
-    Commission,
-    Affiliate,
-    Coupon
+    GameStake,          // Player stakes TON for game
+    GamePayout,         // Winner receives payout
+    PlatformFee,        // Platform fee collection
+    AffiliateFee,       // Affiliate commission payout
+    CouponRedemption,   // Coupon redeemed - TON sent to player
+    Refund              // Game cancelled - refund to player
 }
 
-public enum TransactionStatus
+/// <summary>
+/// Status of blockchain transactions
+/// </summary>
+public enum BlockchainTransactionStatus
 {
-    Pending,
-    Confirmed,
-    Failed,
-    Cancelled
+    Pending,       // Transaction initiated, waiting for blockchain confirmation
+    Confirmed,     // Transaction confirmed on blockchain
+    Failed         // Transaction failed
 }
 
 public enum CouponType
 {
-    FixedAmount,
-    Percentage,
-    FreeGames
+    FixedAmount,    // Fixed TON amount (e.g., 10 TON)
+    Percentage      // Percentage bonus (not used in simplified schema, but kept for future)
 }
 
 public enum Difficulty

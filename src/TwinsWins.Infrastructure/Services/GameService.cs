@@ -106,7 +106,7 @@ public class GameService : IGameService
         _context.GameParticipants.Add(participant);
 
         // Record stake transaction
-        var transaction = new Transaction
+        var transaction = new BlockchainTransaction
         {
             WalletAddress = (await _context.Users.FindAsync(userId))!.WalletAddress,
             GameId = game.Id,
@@ -148,7 +148,7 @@ public class GameService : IGameService
         _context.GameParticipants.Add(participant);
 
         // Record stake transaction for joiner
-        var transaction = new Transaction
+        var transaction = new BlockchainTransaction
         {
             WalletAddress = (await _context.Users.FindAsync(userId))!.WalletAddress,
             GameId = game.Id,

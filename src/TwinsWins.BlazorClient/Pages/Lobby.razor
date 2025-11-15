@@ -1,0 +1,251 @@
+@page "/lobby"
+@using TwinsWins.Core.DTOs
+@using TwinsWins.BlazorClient.State.Game
+@using MudBlazor
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+@inject IState<GameState> GameState
+@inject IDispatcher Dispatcher
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Game Lobbies - TwinsWins</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    <MudText Typo="Typo.h3" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.List" Class="mr-2" />
+        Active Game Lobbies
+    </MudText>
+    
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
+        Join an existing game or create your own!
+    </MudText>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="3">
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          FullWidth="true"
+                          StartIcon="@Icons.Material.Filled.Add"
+                          Href="/play?mode=paid">
+                    Create Lobby
+                </MudButton>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Primary" 
+                          FullWidth="true"
+                          StartIcon="@Icons.Material.Filled.Refresh"
+                          OnClick="RefreshLobbies">
+                    Refresh
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (GameState.Value.IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+        <MudText Align="Align.Center">Loading lobbies...</MudText>
+    }
+    else if (!string.IsNullOrEmpty(GameState.Value.ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="my-4">
+            @GameState.Value.ErrorMessage
+        </MudAlert>
+    }
+    else if (_lobbies == null || !_lobbies.Any())
+    {
+        <MudPaper Elevation="2" Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.h6" Class="mt-4">No Active Lobbies</MudText>
+            <MudText Color="Color.Secondary" Class="mb-4">
+                Be the first to create a game!
+            </MudText>
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      StartIcon="@Icons.Material.Filled.Add"
+                      Href="/play?mode=paid">
+                Create New Lobby
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid>
+            @foreach (var lobby in _lobbies)
+            {
+                <MudItem xs="12" md="6" lg="4">
+                    <MudCard Elevation="3" Class="lobby-card">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">
+                                    @GetStakeDisplay(lobby.StakeAmount)
+                                </MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    @lobby.ImageSet?.Name ?? "Unknown Set"
+                                </MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudChip Size="Size.Small" Color="GetDifficultyColor(lobby.ImageSet?.Difficulty)">
+                                    @lobby.ImageSet?.Difficulty.ToString()
+                                </MudChip>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+
+                        <MudCardContent>
+                            <MudGrid>
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.body2">
+                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                        <strong>Creator:</strong> @GetCreatorName(lobby)
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.body2">
+                                        <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" />
+                                        @GetTimeAgo(lobby.CreatedAt)
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.body2">
+                                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" />
+                                        @lobby.Participants.Count / 2 players
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Pot: @GetPotAmount(lobby.StakeAmount) TON
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudCardContent>
+
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Filled" 
+                                      Color="Color.Success" 
+                                      FullWidth="true"
+                                      OnClick="@(() => JoinLobby(lobby.Id))">
+                                Join Game
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+<style>
+    .lobby-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .lobby-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+</style>
+
+@code {
+    private List<GameDto>? _lobbies;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        
+        // Subscribe to state changes
+        GameState.StateChanged += OnStateChanged;
+        
+        // Load lobbies on mount
+        LoadLobbies();
+    }
+
+    private void OnStateChanged(object? sender, EventArgs e)
+    {
+        // Update local lobbies list from state
+        // In a full implementation, you'd have a LobbiesState
+        // For now, we'll dispatch a load action
+        StateHasChanged();
+    }
+
+    private void LoadLobbies()
+    {
+        // Dispatch action to load lobbies
+        // Note: You'll need to create LoadLobbiesAction in your GameActions
+        Dispatcher.Dispatch(new LoadLobbiesAction());
+    }
+
+    private void RefreshLobbies()
+    {
+        LoadLobbies();
+        Snackbar.Add("Refreshing lobbies...", Severity.Info);
+    }
+
+    private void JoinLobby(Guid gameId)
+    {
+        // Dispatch action to join game
+        Dispatcher.Dispatch(new JoinGameAction(gameId));
+        
+        // Navigate will happen in the effect after successful join
+        // For now, navigate immediately
+        Navigation.NavigateTo($"/game/{gameId}");
+    }
+
+    private string GetStakeDisplay(decimal? stakeAmount)
+    {
+        if (stakeAmount.HasValue)
+        {
+            return $"{stakeAmount.Value:F2} TON Stake";
+        }
+        return "Free Game";
+    }
+
+    private string GetPotAmount(decimal? stakeAmount)
+    {
+        if (stakeAmount.HasValue)
+        {
+            return $"{stakeAmount.Value * 2:F2}";
+        }
+        return "0";
+    }
+
+    private string GetCreatorName(GameDto lobby)
+    {
+        var creator = lobby.Participants.FirstOrDefault(p => p.Role == Core.Enums.ParticipantRole.Creator);
+        return creator?.Username ?? creator?.WalletAddress?[..8] + "..." ?? "Unknown";
+    }
+
+    private string GetTimeAgo(DateTime createdAt)
+    {
+        var elapsed = DateTime.UtcNow - createdAt;
+        
+        if (elapsed.TotalMinutes < 1)
+            return "Just now";
+        if (elapsed.TotalMinutes < 60)
+            return $"{(int)elapsed.TotalMinutes}m ago";
+        if (elapsed.TotalHours < 24)
+            return $"{(int)elapsed.TotalHours}h ago";
+        
+        return $"{(int)elapsed.TotalDays}d ago";
+    }
+
+    private Color GetDifficultyColor(Core.Enums.Difficulty? difficulty)
+    {
+        return difficulty switch
+        {
+            Core.Enums.Difficulty.Easy => Color.Success,
+            Core.Enums.Difficulty.Medium => Color.Warning,
+            Core.Enums.Difficulty.Hard => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    public override void Dispose()
+    {
+        GameState.StateChanged -= OnStateChanged;
+        base.Dispose();
+    }
+}

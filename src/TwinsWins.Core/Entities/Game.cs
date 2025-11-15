@@ -19,5 +19,5 @@ public class Game : BaseEntity
     // Navigation properties
     public ICollection<GameParticipant> Participants { get; set; } = new List<GameParticipant>();
     public ICollection<GameMove> Moves { get; set; } = new List<GameMove>();
-    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public ICollection<BlockchainTransaction> Transactions { get; set; } = new List<BlockchainTransaction>();
 }

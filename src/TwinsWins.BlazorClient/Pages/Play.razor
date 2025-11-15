@@ -1,0 +1,268 @@
+@page "/play"
+@using TwinsWins.Core.DTOs
+@using TwinsWins.BlazorClient.State.Game
+@using TwinsWins.BlazorClient.State.User
+@using MudBlazor
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+@inject IState<UserState> UserState
+@inject IState<GameState> GameState
+@inject IDispatcher Dispatcher
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Play - TwinsWins</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium">
+    <MudText Typo="Typo.h3" Align="Align.Center" GutterBottom="true">
+        Choose Your Game Mode
+    </MudText>
+
+    @if (!UserState.Value.IsAuthenticated)
+    {
+        <MudAlert Severity="Severity.Info" Class="my-4">
+            <MudText>Please connect your TON wallet to play!</MudText>
+        </MudAlert>
+    }
+
+    <MudGrid Class="mt-6">
+        <!-- Free Game Mode -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="4" Class="game-mode-card">
+                <MudCardHeader Class="pb-0">
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h4" Align="Align.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.SportsEsports" Size="Size.Large" Color="Color.Primary" />
+                        </MudText>
+                        <MudText Typo="Typo.h5" Align="Align.Center">Free Practice</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+
+                <MudCardContent>
+                    <MudList>
+                        <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                            No stakes required
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                            Unlimited games
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                            Practice your skills
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                            Instant start
+                        </MudListItem>
+                    </MudList>
+                </MudCardContent>
+
+                <MudCardActions Class="justify-center pb-4">
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Primary" 
+                              Size="Size.Large"
+                              FullWidth="true"
+                              OnClick="CreateFreeGame"
+                              Disabled="GameState.Value.IsLoading || !UserState.Value.IsAuthenticated">
+                        @if (GameState.Value.IsLoading && _lastAction == "free")
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                            <span class="ml-2">Creating...</span>
+                        }
+                        else
+                        {
+                            <span>Play Free Game</span>
+                        }
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <!-- Paid Game Mode -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="4" Class="game-mode-card premium-card">
+                <MudCardHeader Class="pb-0">
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h4" Align="Align.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Size="Size.Large" Color="Color.Success" />
+                        </MudText>
+                        <MudText Typo="Typo.h5" Align="Align.Center">Competitive</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+
+                <MudCardContent>
+                    <MudList>
+                        <MudListItem Icon="@Icons.Material.Filled.AttachMoney" IconColor="Color.Success">
+                            Stake TON to play
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.EmojiEvents" IconColor="Color.Success">
+                            Winner takes pot
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.Security" IconColor="Color.Success">
+                            Blockchain secured
+                        </MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.Group" IconColor="Color.Success">
+                            Play against others
+                        </MudListItem>
+                    </MudList>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudTextField @bind-Value="_stakeAmount" 
+                                 Label="Stake Amount (TON)" 
+                                 Variant="Variant.Outlined"
+                                 Adornment="Adornment.Start"
+                                 AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                                 Type="number"
+                                 Step="0.1"
+                                 Min="0.1"
+                                 HelperText="Minimum: 0.1 TON"
+                                 Disabled="GameState.Value.IsLoading || !UserState.Value.IsAuthenticated" />
+                </MudCardContent>
+
+                <MudCardActions Class="justify-center pb-4">
+                    <MudButton Variant="Variant.Filled" 
+                              Color="Color.Success" 
+                              Size="Size.Large"
+                              FullWidth="true"
+                              OnClick="CreatePaidGame"
+                              Disabled="GameState.Value.IsLoading || !UserState.Value.IsAuthenticated || _stakeAmount < 0.1m">
+                        @if (GameState.Value.IsLoading && _lastAction == "paid")
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                            <span class="ml-2">Creating Lobby...</span>
+                        }
+                        else
+                        {
+                            <span>Create Lobby</span>
+                        }
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Browse Lobbies -->
+    <MudPaper Elevation="2" Class="pa-4 mt-6 text-center">
+        <MudText Typo="Typo.h6" GutterBottom="true">
+            Or Join an Existing Game
+        </MudText>
+        <MudButton Variant="Variant.Outlined" 
+                  Color="Color.Primary"
+                  StartIcon="@Icons.Material.Filled.List"
+                  Href="/lobby">
+            Browse Active Lobbies
+        </MudButton>
+    </MudPaper>
+</MudContainer>
+
+<style>
+    .game-mode-card {
+        height: 100%;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .game-mode-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+    }
+
+    .premium-card {
+        border: 2px solid var(--mud-palette-success);
+    }
+</style>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "mode")]
+    public string? Mode { get; set; }
+
+    private decimal _stakeAmount = 1.0m;
+    private string? _lastAction = null;
+
+    // Default image set ID - should be from config or loaded from API
+    private Guid _defaultImageSetId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        
+        // Subscribe to state changes
+        GameState.StateChanged += OnGameStateChanged;
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Auto-select mode from query parameter
+        if (Mode?.ToLower() == "paid")
+        {
+            // User clicked "Create Lobby" or "Play for Stakes"
+            // Could auto-scroll or highlight the paid option
+        }
+    }
+
+    private void OnGameStateChanged(object? sender, EventArgs e)
+    {
+        if (!string.IsNullOrEmpty(GameState.Value.ErrorMessage))
+        {
+            Snackbar.Add($"Error: {GameState.Value.ErrorMessage}", Severity.Error);
+            _lastAction = null;
+        }
+        else if (GameState.Value.CurrentGame != null && !GameState.Value.IsLoading)
+        {
+            // Game created successfully
+            if (_lastAction == "free")
+            {
+                Snackbar.Add("Free game created! Starting...", Severity.Success);
+                Navigation.NavigateTo($"/game/{GameState.Value.CurrentGame.Id}");
+            }
+            else if (_lastAction == "paid")
+            {
+                Snackbar.Add($"Lobby created with {_stakeAmount} TON stake!", Severity.Success);
+                Navigation.NavigateTo("/lobby");
+            }
+            _lastAction = null;
+        }
+        
+        StateHasChanged();
+    }
+
+    private void CreateFreeGame()
+    {
+        if (!UserState.Value.IsAuthenticated)
+        {
+            Snackbar.Add("Please connect your wallet first!", Severity.Warning);
+            return;
+        }
+
+        _lastAction = "free";
+        
+        // Dispatch Fluxor action to create free game
+        Dispatcher.Dispatch(new CreateFreeGameAction(_defaultImageSetId));
+    }
+
+    private void CreatePaidGame()
+    {
+        if (!UserState.Value.IsAuthenticated)
+        {
+            Snackbar.Add("Please connect your wallet first!", Severity.Warning);
+            return;
+        }
+
+        if (_stakeAmount < 0.1m)
+        {
+            Snackbar.Add("Minimum stake is 0.1 TON", Severity.Warning);
+            return;
+        }
+
+        _lastAction = "paid";
+        
+        // Dispatch Fluxor action to create paid game
+        Dispatcher.Dispatch(new CreatePaidGameAction(_stakeAmount, _defaultImageSetId));
+    }
+
+    public override void Dispose()
+    {
+        GameState.StateChanged -= OnGameStateChanged;
+        base.Dispose();
+    }
+}
