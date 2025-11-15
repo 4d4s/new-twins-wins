@@ -18,6 +18,7 @@ public class GameResultDto
     public bool IsGameComplete { get; set; }
     public bool? IsWinner { get; set; }
     public decimal? PayoutAmount { get; set; }
+    public decimal PrizeAmount => PayoutAmount ?? 0;
 }
 
 public class CreateFreeGameRequest

@@ -1,17 +1,27 @@
+\Game.razor
 @page "/game/{GameId}"
 @using TwinsWins.Core.DTOs
+@using TwinsWins.BlazorClient.State.Game
+@using TwinsWins.BlazorClient.State.User
 @using TwinsWins.BlazorClient.Services
 @using MudBlazor
-@inject IGameApiService GameApi
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+@inject IState<GameState> GameState
+@inject IState<UserState> UserState
+@inject IDispatcher Dispatcher
 @inject IGameHubService GameHub
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@implements IDisposable
 
 <PageTitle>Game - TwinsWins</PageTitle>
 
-@if (_game == null)
+@if (GameState.Value.CurrentGame == null)
 {
     <MudProgressCircular Indeterminate="true" />
+    <MudText Align="Align.Center" Class="mt-4">Loading game...</MudText>
 }
 else
 {
@@ -20,13 +30,13 @@ else
             <MudPaper Elevation="2" Class="pa-4">
                 <MudGrid>
                     <MudItem xs="4">
-                        <MudText Typo="Typo.h6">Time: @_timeRemaining</MudText>
+                        <MudText Typo="Typo.h6">Time: @GameState.Value.TimeRemaining</MudText>
                     </MudItem>
                     <MudItem xs="4" Class="text-center">
-                        <MudText Typo="Typo.h5">Score: @_score</MudText>
+                        <MudText Typo="Typo.h5">Score: @GameState.Value.CurrentScore</MudText>
                     </MudItem>
                     <MudItem xs="4" Class="text-right">
-                        <MudText Typo="Typo.h6">Pairs: @_pairsFound/9</MudText>
+                        <MudText Typo="Typo.h6">Pairs: @GameState.Value.MatchedPairs.Count/@(GameState.Value.CurrentGame.Cards.Count() / 2)</MudText>
                     </MudItem>
                 </MudGrid>
             </MudPaper>
@@ -34,31 +44,39 @@ else
 
         <MudItem xs="12">
             <MudGrid Spacing="2">
-                @foreach (var card in _game.Cards)
+                @foreach (var card in GameState.Value.CurrentGame.Cards)
                 {
                     <MudItem xs="4" sm="3" md="2">
-                        <GameCard 
-                            Card="@card" 
-                            IsSelected="@_selectedCards.Contains(card.Id)"
-                            IsMatched="@_matchedCards.Contains(card.Id)"
-                            OnClick="@(() => SelectCard(card))" 
-                        />
+                        <GameCard Card="@card"
+                                  IsSelected="@GameState.Value.SelectedCards.Contains(card.Id)"
+                                  IsMatched="@IsCardMatched(card.Id)"
+                                  OnClick="@(() => SelectCard(card))" />
                     </MudItem>
                 }
             </MudGrid>
         </MudItem>
 
-        @if (_gameComplete)
+        @if (GameState.Value.IsGameComplete)
         {
             <MudItem xs="12">
                 <MudPaper Elevation="3" Class="pa-6 text-center">
                     <MudText Typo="Typo.h4">Game Complete!</MudText>
-                    <MudText Typo="Typo.h5" Color="Color.Success">Final Score: @_score</MudText>
-                    @if (_isWinner.HasValue)
+                    <MudText Typo="Typo.h5" Color="Color.Success">Final Score: @GameState.Value.CurrentScore</MudText>
+                    @if (_finalResult != null)
                     {
-                        <MudText Typo="Typo.h6" Color="@(_isWinner.Value ? Color.Success : Color.Error)">
-                            @(_isWinner.Value ? "🎉 You Won!" : "Better luck next time!")
-                        </MudText>
+                        @if (_finalResult.IsWinner.HasValue)
+                        {
+                            <MudText Typo="Typo.h6" Color="@(_finalResult.IsWinner.Value? Color.Success: Color.Error)">
+                                @(_finalResult.IsWinner.Value ? "🎉 You Won!" : "Better luck next time!")
+                            </MudText>
+                        }
+
+                        @if (_finalResult.PayoutAmount.HasValue && _finalResult.PayoutAmount.Value > 0)
+                        {
+                            <MudText Typo="Typo.body1" Color="Color.Success" Class="mt-2">
+                                Prize: @_finalResult.PayoutAmount.Value TON
+                            </MudText>
+                        }
                     }
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PlayAgain" Class="mt-4">
                         Play Again
@@ -66,139 +84,189 @@ else
                 </MudPaper>
             </MudItem>
         }
+
+        @if (GameState.Value.IsLoading)
+        {
+            <MudOverlay Visible="true" DarkBackground="true">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+            </MudOverlay>
+        }
     </MudGrid>
 }
 
 @code {
     [Parameter] public string? GameId { get; set; }
 
-    private GameDto? _game;
-    private int _score = 0;
-    private int _pairsFound = 0;
-    private int _timeRemaining = 60;
-    private bool _gameComplete = false;
-    private bool? _isWinner;
-    private List<int> _selectedCards = new();
-    private HashSet<int> _matchedCards = new();
     private Timer? _timer;
+    private GameResultDto? _finalResult;
 
     protected override async Task OnInitializedAsync()
     {
+        base.OnInitializedAsync();
+
         if (string.IsNullOrEmpty(GameId))
         {
             Navigation.NavigateTo("/");
             return;
         }
 
+        if (!UserState.Value.IsAuthenticated)
+        {
+            Snackbar.Add("Please connect your wallet first!", Severity.Warning);
+            Navigation.NavigateTo("/lobby");
+            return;
+        }
+
+        // Load the game using Fluxor
+        Dispatcher.Dispatch(new LoadGameAction(Guid.Parse(GameId)));
+
+        // Connect to SignalR hub
         try
         {
-            _game = await GameApi.GetGameAsync(Guid.Parse(GameId));
             await GameHub.JoinGameAsync(GameId);
-            StartTimer();
+
+            // Subscribe to hub events
+            GameHub.OnMoveCompleted += HandleMoveCompleted;
+            GameHub.OnGameCompleted += HandleGameCompleted;
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading game: {ex.Message}", Severity.Error);
-            Navigation.NavigateTo("/");
+            Snackbar.Add($"Error connecting to game: {ex.Message}", Severity.Error);
+        }
+
+        StartTimer();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(GameState.Value.ErrorMessage))
+        {
+            Snackbar.Add($"Error: {GameState.Value.ErrorMessage}", Severity.Error);
+            Navigation.NavigateTo("/lobby");
         }
     }
 
     private void StartTimer()
     {
-        _timer = new Timer(async _ =>
+        _timer = new Timer(_ =>
         {
-            _timeRemaining--;
-            if (_timeRemaining <= 0)
+            if (!GameState.Value.IsGameComplete && GameState.Value.TimeRemaining > 0)
             {
-                await CompleteGame();
+                Dispatcher.Dispatch(new UpdateTimerAction(GameState.Value.TimeRemaining - 1));
+
+                if (GameState.Value.TimeRemaining <= 1)
+                {
+                    CompleteGame();
+                }
             }
-            await InvokeAsync(StateHasChanged);
+
+            InvokeAsync(StateHasChanged);
         }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
-    private async Task SelectCard(CardDto card)
+    private void SelectCard(CardDto card)
     {
-        if (_gameComplete || _matchedCards.Contains(card.Id) || _selectedCards.Contains(card.Id))
+        if (GameState.Value.IsGameComplete ||
+            IsCardMatched(card.Id) ||
+            GameState.Value.SelectedCards.Contains(card.Id) ||
+            GameState.Value.SelectedCards.Count >= 2)
             return;
 
-        _selectedCards.Add(card.Id);
+        Dispatcher.Dispatch(new SelectCardAction(card.Id));
 
-        if (_selectedCards.Count == 2)
+        if (GameState.Value.SelectedCards.Count == 1) // Will be 2 after this dispatch
         {
-            await Task.Delay(100); // Brief pause for visual feedback
-            await CheckMatch();
+            // Delay to show the second card before checking match
+            Task.Delay(500).ContinueWith(_ => InvokeAsync(CheckMatch));
         }
-
-        StateHasChanged();
     }
 
     private async Task CheckMatch()
     {
-        try
+        if (GameState.Value.SelectedCards.Count != 2)
+            return;
+
+        var move = new GameMoveDto
         {
-            var move = new GameMoveDto
-            {
-                Card1Id = _selectedCards[0],
-                Card2Id = _selectedCards[1],
-                ClientTimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-            };
+            Card1Id = GameState.Value.SelectedCards[0],
+            Card2Id = GameState.Value.SelectedCards[1],
+            ClientTimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+        };
 
-            var result = await GameApi.SubmitMoveAsync(Guid.Parse(GameId!), move);
+        Dispatcher.Dispatch(new SubmitMoveAction(Guid.Parse(GameId!), move));
+    }
 
-            if (result.IsCorrect)
-            {
-                _matchedCards.Add(_selectedCards[0]);
-                _matchedCards.Add(_selectedCards[1]);
-                _pairsFound++;
-                Snackbar.Add($"+{result.PointsAwarded} points!", Severity.Success);
-            }
-            else
-            {
-                Snackbar.Add($"{result.PointsAwarded} points", Severity.Warning);
-            }
-
-            _score = result.Score;
-            _selectedCards.Clear();
-
-            if (result.IsGameComplete)
-            {
-                await CompleteGame();
-            }
-        }
-        catch (Exception ex)
+    private void HandleMoveCompleted(object result)
+    {
+        InvokeAsync(() =>
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
-            _selectedCards.Clear();
+            if (result is GameResultDto moveResult)
+            {
+                if (moveResult.IsCorrect)
+                {
+                    Snackbar.Add($"+{moveResult.PointsAwarded} points! 🎉", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add($"{moveResult.PointsAwarded} points", Severity.Warning);
+                }
+
+                if (moveResult.IsGameComplete)
+                {
+                    _finalResult = moveResult;
+                    CompleteGame();
+                }
+            }
+            StateHasChanged();
+        });
+    }
+
+    private void HandleGameCompleted(object result)
+    {
+        InvokeAsync(() =>
+        {
+            if (result is GameResultDto gameResult)
+            {
+                _finalResult = gameResult;
+            }
+            CompleteGame();
+            StateHasChanged();
+        });
+    }
+
+    private void CompleteGame()
+    {
+        _timer?.Dispose();
+
+        if (!GameState.Value.IsGameComplete)
+        {
+            Dispatcher.Dispatch(new CompleteGameAction(Guid.Parse(GameId!)));
         }
     }
 
-    private async Task CompleteGame()
+    private bool IsCardMatched(int cardId)
     {
-        _timer?.Dispose();
-        _gameComplete = true;
-
-        try
-        {
-            var result = await GameApi.CompleteGameAsync(Guid.Parse(GameId!));
-            _isWinner = result.IsWinner;
-            _score = result.Score;
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error completing game: {ex.Message}", Severity.Error);
-        }
-
-        StateHasChanged();
+        // Check if this card's pair is in the matched pairs set
+        var card = GameState.Value.CurrentGame?.Cards.FirstOrDefault(c => c.Id == cardId);
+        return card != null && GameState.Value.MatchedPairs.Contains(card.PairId);
     }
 
     private void PlayAgain()
     {
+        Dispatcher.Dispatch(new ResetGameStateAction());
         Navigation.NavigateTo("/play");
     }
 
     public void Dispose()
     {
         _timer?.Dispose();
-        GameHub.LeaveGameAsync(GameId!);
+
+        GameHub.OnMoveCompleted -= HandleMoveCompleted;
+        GameHub.OnGameCompleted -= HandleGameCompleted;
+
+        if (!string.IsNullOrEmpty(GameId))
+        {
+            _ = GameHub.LeaveGameAsync(GameId);
+        }
     }
 }

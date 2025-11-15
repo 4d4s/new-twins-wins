@@ -32,16 +32,16 @@
             <MudGrid>
                 <MudItem xs="12" sm="6" md="3">
                     <MudSelect T="string" Label="Filter by Type" Variant="Variant.Outlined" @bind-Value="_selectedType">
-                        <MudSelectItem Value="@("all")">All Games</MudSelectItem>
-                        <MudSelectItem Value="@("free")">Free Games</MudSelectItem>
-                        <MudSelectItem Value="@("paid")">Paid Games</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("all")">All Games</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("free")">Free Games</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("paid")">Paid Games</MudSelectItem>
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="6" md="3">
                     <MudSelect T="string" Label="Filter by Result" Variant="Variant.Outlined" @bind-Value="_selectedResult">
-                        <MudSelectItem Value="@("all")">All Results</MudSelectItem>
-                        <MudSelectItem Value="@("won")">Wins</MudSelectItem>
-                        <MudSelectItem Value="@("lost")">Losses</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("all")">All Results</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("won")">Wins</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("lost")">Losses</MudSelectItem>
                     </MudSelect>
                 </MudItem>
             </MudGrid>
@@ -60,10 +60,10 @@
                 <MudText Color="Color.Secondary" Class="mb-4">
                     Start playing to build your game history!
                 </MudText>
-                <MudButton Variant="Variant.Filled" 
-                          Color="Color.Primary" 
-                          StartIcon="@Icons.Material.Filled.PlayArrow"
-                          Href="/play">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PlayArrow"
+                           Href="/play">
                     Play Your First Game
                 </MudButton>
             </MudPaper>
@@ -82,14 +82,14 @@
                 <RowTemplate>
                     <MudTd DataLabel="Date">@context.Date.ToString("MMM dd, yyyy")</MudTd>
                     <MudTd DataLabel="Type">
-                        <MudChip Size="Size.Small" Color="@(context.IsPaid ? Color.Success : Color.Info)">
+                        <MudChip T="string" Size="Size.Small" Color="@(context.IsPaid? Color.Success: Color.Info)">
                             @(context.IsPaid ? "Paid" : "Free")
                         </MudChip>
                     </MudTd>
                     <MudTd DataLabel="Opponent">@context.Opponent</MudTd>
                     <MudTd DataLabel="Score">@context.MyScore - @context.OpponentScore</MudTd>
                     <MudTd DataLabel="Result">
-                        <MudChip Size="Size.Small" Color="@(context.IsWin ? Color.Success : Color.Error)">
+                        <MudChip T="string" Size="Size.Small" Color="@(context.IsWin? Color.Success: Color.Error)">
                             @(context.IsWin ? "Won" : "Lost")
                         </MudChip>
                     </MudTd>
@@ -109,7 +109,7 @@
                     </MudTd>
                 </RowTemplate>
                 <PagerContent>
-                    <MudTablePager PageSizeOptions="new int[]{10, 25, 50}" />
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
                 </PagerContent>
             </MudTable>
         }
@@ -124,6 +124,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         if (UserState.Value.IsAuthenticated)
         {
             await LoadHistory();
@@ -133,13 +134,13 @@
     private async Task LoadHistory()
     {
         _isLoading = true;
-        
+
         // TODO: Load actual game history from API
         await Task.Delay(500); // Simulate API call
-        
+
         // Mock data for demonstration
         _gameHistory = new List<GameHistoryItem>();
-        
+
         _isLoading = false;
     }
 

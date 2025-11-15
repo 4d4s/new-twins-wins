@@ -1,5 +1,11 @@
 @page "/leaderboard"
+@using TwinsWins.BlazorClient.State.Leaderboard
 @using MudBlazor
+@using Fluxor
+@using Fluxor.Blazor.Web.Components
+@inherits FluxorComponent
+@inject IState<LeaderboardState> LeaderboardState
+@inject IDispatcher Dispatcher
 
 <PageTitle>Leaderboard - TwinsWins</PageTitle>
 
@@ -12,30 +18,44 @@
     <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudGrid>
             <MudItem xs="12" sm="6" md="4">
-                <MudSelect T="string" Label="Time Period" Variant="Variant.Outlined" @bind-Value="_selectedPeriod" ValueChanged="OnFilterChanged">
-                    <MudSelectItem Value="@("today")">Today</MudSelectItem>
-                    <MudSelectItem Value="@("week")">This Week</MudSelectItem>
-                    <MudSelectItem Value="@("month")">This Month</MudSelectItem>
-                    <MudSelectItem Value="@("alltime")">All Time</MudSelectItem>
+                <MudSelect T="string" 
+                          Label="Time Period" 
+                          Variant="Variant.Outlined" 
+                          Value="@LeaderboardState.Value.SelectedPeriod"
+                          ValueChanged="@(value => OnFilterChanged(value, LeaderboardState.Value.SelectedCategory))">
+                    <MudSelectItem T="string" Value="@("today")">Today</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("week")">This Week</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("month")">This Month</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("alltime")">All Time</MudSelectItem>
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
-                <MudSelect T="string" Label="Category" Variant="Variant.Outlined" @bind-Value="_selectedCategory" ValueChanged="OnFilterChanged">
-                    <MudSelectItem Value="@("wins")">Most Wins</MudSelectItem>
-                    <MudSelectItem Value="@("winrate")">Highest Win Rate</MudSelectItem>
-                    <MudSelectItem Value="@("earnings")">Top Earnings</MudSelectItem>
-                    <MudSelectItem Value="@("rating")">Highest Rating</MudSelectItem>
+                <MudSelect T="string" 
+                          Label="Category" 
+                          Variant="Variant.Outlined" 
+                          Value="@LeaderboardState.Value.SelectedCategory"
+                          ValueChanged="@(value => OnFilterChanged(LeaderboardState.Value.SelectedPeriod, value))">
+                    <MudSelectItem T="string" Value="@("wins")">Most Wins</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("winrate")">Highest Win Rate</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("earnings")">Top Earnings</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("rating")">Highest Rating</MudSelectItem>
                 </MudSelect>
             </MudItem>
         </MudGrid>
     </MudPaper>
 
-    @if (_isLoading)
+    @if (LeaderboardState.Value.IsLoading)
     {
         <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
         <MudText Align="Align.Center">Loading leaderboard...</MudText>
     }
-    else if (_leaderboard.Count == 0)
+    else if (!string.IsNullOrEmpty(LeaderboardState.Value.ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="my-4">
+            @LeaderboardState.Value.ErrorMessage
+        </MudAlert>
+    }
+    else if (LeaderboardState.Value.Players.Count == 0)
     {
         <MudPaper Elevation="2" Class="pa-8 text-center">
             <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Size="Size.Large" Color="Color.Secondary" />
@@ -48,8 +68,8 @@
     else
     {
         <MudPaper Elevation="3">
-            <MudList Clickable="false">
-                @foreach (var (player, index) in _leaderboard.Select((p, i) => (p, i)))
+            <MudList T="Core.DTOs.LeaderboardPlayerDto" Clickable="false">
+                @foreach (var (player, index) in LeaderboardState.Value.Players.Select((p, i) => (p, i)))
                 {
                     <MudListItem Class="@GetRankClass(index)" Style="padding: 16px;">
                         <MudGrid>
@@ -84,7 +104,7 @@
                             </MudItem>
                         </MudGrid>
                     </MudListItem>
-                    @if (index < _leaderboard.Count - 1)
+                    @if (index < LeaderboardState.Value.Players.Count - 1)
                     {
                         <MudDivider />
                     }
@@ -105,41 +125,24 @@
 </style>
 
 @code {
-    private bool _isLoading = false;
-    private string _selectedPeriod = "week";
-    private string _selectedCategory = "wins";
-    private List<LeaderboardPlayer> _leaderboard = new();
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        await LoadLeaderboard();
+        base.OnInitialized();
+        LoadLeaderboard();
     }
 
-    private async Task OnFilterChanged(string value)
+    private void OnFilterChanged(string period, string category)
     {
-        await LoadLeaderboard();
+        Dispatcher.Dispatch(new SetLeaderboardFilterAction(period, category));
+        LoadLeaderboard();
     }
 
-    private async Task LoadLeaderboard()
+    private void LoadLeaderboard()
     {
-        _isLoading = true;
-        StateHasChanged();
-        
-        // TODO: Load actual leaderboard from API
-        await Task.Delay(500); // Simulate API call
-        
-        // Mock data for demonstration
-        _leaderboard = new List<LeaderboardPlayer>
-        {
-            new LeaderboardPlayer { Username = "CryptoKing", WalletAddress = "EQAbc123def456ghi789jkl", Wins = 150, WinRate = 75.5m, Earnings = 245.50m, Rating = 1850 },
-            new LeaderboardPlayer { Username = "TONMaster", WalletAddress = "EQXyz987uvw654rst321pqr", Wins = 142, WinRate = 72.8m, Earnings = 198.30m, Rating = 1780 },
-            new LeaderboardPlayer { Username = "MemoryChamp", WalletAddress = "EQQwe456rty789uio123asd", Wins = 135, WinRate = 70.2m, Earnings = 175.80m, Rating = 1720 },
-            new LeaderboardPlayer { Username = "QuickThinker", WalletAddress = "EQZxc789bnm456vbn123fgh", Wins = 128, WinRate = 68.9m, Earnings = 156.40m, Rating = 1680 },
-            new LeaderboardPlayer { Username = "PuzzlePro", WalletAddress = "EQKjh654lkj321poi098mnb", Wins = 120, WinRate = 66.5m, Earnings = 142.20m, Rating = 1640 }
-        };
-        
-        _isLoading = false;
-        StateHasChanged();
+        Dispatcher.Dispatch(new LoadLeaderboardAction(
+            LeaderboardState.Value.SelectedPeriod,
+            LeaderboardState.Value.SelectedCategory
+        ));
     }
 
     private string GetRankClass(int index) => index < 3 ? $"rank-{index + 1}" : "";
@@ -174,7 +177,7 @@
     private string GetWalletShort(string wallet) => 
         wallet.Length > 10 ? $"{wallet[..6]}...{wallet[^4..]}" : wallet;
 
-    private string GetStatLabel() => _selectedCategory switch
+    private string GetStatLabel() => LeaderboardState.Value.SelectedCategory switch
     {
         "wins" => "Wins",
         "winrate" => "Win Rate",
@@ -183,7 +186,7 @@
         _ => "Score"
     };
 
-    private string GetStatValue(LeaderboardPlayer player) => _selectedCategory switch
+    private string GetStatValue(Core.DTOs.LeaderboardPlayerDto player) => LeaderboardState.Value.SelectedCategory switch
     {
         "wins" => player.Wins.ToString(),
         "winrate" => $"{player.WinRate:F1}%",
@@ -191,15 +194,5 @@
         "rating" => player.Rating.ToString(),
         _ => "0"
     };
-
-    private class LeaderboardPlayer
-    {
-        public string Username { get; set; } = string.Empty;
-        public string WalletAddress { get; set; } = string.Empty;
-        public int Wins { get; set; }
-        public decimal WinRate { get; set; }
-        public decimal Earnings { get; set; }
-        public int Rating { get; set; }
-    }
 }
 
