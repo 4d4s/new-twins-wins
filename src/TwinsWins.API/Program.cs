@@ -94,6 +94,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IAntiCheatService, AntiCheatService>();
 builder.Services.AddScoped<IBlockchainService, BlockchainService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Health Checks
 builder.Services.AddHealthChecks()
