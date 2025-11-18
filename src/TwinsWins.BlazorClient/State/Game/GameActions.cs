@@ -26,6 +26,8 @@ public class LoadGameFailureAction
 }
 
 // Create Game Actions
+public class CreateGameStartAction { }
+
 public class CreateFreeGameAction
 {
     public Guid ImageSetId { get; }

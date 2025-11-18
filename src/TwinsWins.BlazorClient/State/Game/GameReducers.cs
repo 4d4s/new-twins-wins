@@ -1,4 +1,5 @@
 using Fluxor;
+using TwinsWins.Core.DTOs;
 
 namespace TwinsWins.BlazorClient.State.Game;
 
@@ -56,6 +57,22 @@ public static class GameReducers
     }
 
     [ReducerMethod]
+    public static GameState ReduceCreateGameStartAction(GameState state, CreateGameStartAction action)
+    {
+        return new GameState(
+            currentGame: state.CurrentGame,
+            lobbies: state.Lobbies,
+            isLoading: true,
+            errorMessage: null,
+            currentScore: state.CurrentScore,
+            timeRemaining: state.TimeRemaining,
+            selectedCards: state.SelectedCards,
+            matchedPairs: state.MatchedPairs,
+            isGameComplete: state.IsGameComplete
+        );
+    }
+
+    [ReducerMethod]
     public static GameState ReduceCreateGameSuccessAction(GameState state, CreateGameSuccessAction action)
     {
         return new GameState(
@@ -63,11 +80,11 @@ public static class GameReducers
             lobbies: state.Lobbies,
             isLoading: false,
             errorMessage: null,
-            currentScore: 0,
-            timeRemaining: 60,
-            selectedCards: new List<int>(),
-            matchedPairs: new HashSet<int>(),
-            isGameComplete: false
+            currentScore: state.CurrentScore,
+            timeRemaining: state.TimeRemaining,
+            selectedCards: state.SelectedCards,
+            matchedPairs: state.MatchedPairs,
+            isGameComplete: state.IsGameComplete
         );
     }
 
@@ -172,7 +189,7 @@ public static class GameReducers
     {
         return new GameState(
             currentGame: state.CurrentGame,
-            lobbies: new List<Core.DTOs.GameDto>(),
+            lobbies: state.Lobbies,
             isLoading: false,
             errorMessage: action.ErrorMessage,
             currentScore: state.CurrentScore,

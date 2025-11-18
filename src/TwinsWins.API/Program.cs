@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -8,7 +8,9 @@ using TwinsWins.Infrastructure.Data;
 using TwinsWins.Core.Interfaces;
 using TwinsWins.Infrastructure.Services;
 using TwinsWins.API.Hubs;
-using Microsoft.Extensions.Caching.StackExchangeRedis; // Add this using directive at the top of the file
+using Microsoft.Extensions.Caching.StackExchangeRedis;
+using Npgsql;
+using TwinsWins.Core.Enums;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,9 +28,24 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
-// Database
+// Create NpgsqlDataSource with enum mappings (Modern Npgsql 7.0+ approach)
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
+dataSourceBuilder.MapEnum<GameStatus>("GameStatus");
+dataSourceBuilder.MapEnum<GameType>("GameType");
+dataSourceBuilder.MapEnum<ParticipantRole>("ParticipantRole");
+dataSourceBuilder.MapEnum<BlockchainTransactionStatus>("TransactionStatus");
+dataSourceBuilder.MapEnum<BlockchainTransactionType>("TransactionType");
+dataSourceBuilder.MapEnum<CouponType>("CouponType");
+dataSourceBuilder.MapEnum<AuditLevel>("AuditLevel");
+dataSourceBuilder.MapEnum<Difficulty>("Difficulty");
+var dataSource = dataSourceBuilder.Build();
+
+// Register the data source
+builder.Services.AddSingleton(dataSource);
+
+// Database - use the data source
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(dataSource));
 
 // Redis
 builder.Services.AddStackExchangeRedisCache(options =>
@@ -79,12 +96,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// CORS
+// CORS (Development only - use specific origins in production)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
-        builder => builder
-            .WithOrigins("http://localhost:5001", "https://localhost:5001")
+        corsBuilder => corsBuilder
+            .SetIsOriginAllowed(_ => true)  // Allow any origin in development
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials());

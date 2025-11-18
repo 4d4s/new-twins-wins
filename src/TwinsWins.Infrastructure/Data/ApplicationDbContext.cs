@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TwinsWins.Core.Entities;
+using TwinsWins.Core.Enums;
 
 namespace TwinsWins.Infrastructure.Data;
 
@@ -23,12 +24,22 @@ public class ApplicationDbContext : DbContext
     public DbSet<AffiliatePayout> AffiliatePayouts => Set<AffiliatePayout>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<GameSession> GameSessions => Set<GameSession>();
-
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Configure PostgreSQL enums
+        modelBuilder.HasPostgresEnum<GameStatus>();
+        modelBuilder.HasPostgresEnum<GameType>();
+        modelBuilder.HasPostgresEnum<ParticipantRole>();
+        modelBuilder.HasPostgresEnum<BlockchainTransactionStatus>();
+        modelBuilder.HasPostgresEnum<BlockchainTransactionType>();
+        modelBuilder.HasPostgresEnum<CouponType>();
+        modelBuilder.HasPostgresEnum<AuditLevel>();
+        modelBuilder.HasPostgresEnum<Difficulty>();
 
         // User configuration (NO internal balance)
         modelBuilder.Entity<User>(entity =>
